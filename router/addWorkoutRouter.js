@@ -10,8 +10,6 @@ AddWorkoutRouter.get('/:id', AddWorkoutController.findOne);
 
 AddWorkoutRouter.post('/',  AddWorkoutController.create)
 
-AddWorkoutRouter.get('/me',  AddWorkoutController.findOne);
-
 AddWorkoutRouter.delete('/:id', AddWorkoutController.delete);
 
 AddWorkoutRouter.patch('/', AddWorkoutController.update);
