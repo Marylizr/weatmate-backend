@@ -2,7 +2,6 @@
 const AddWork = require('../models/addWorkoutModel');
 
 
-
    exports.findAll = async (req, res) =>{
       res.status(200).json(await AddWork.find());
    };
