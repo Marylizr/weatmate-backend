@@ -9,7 +9,8 @@ const addWorkSchema = new Schema({
   reps: Number,
   series: Number,
   picture: String,
-  video: String
+  video: String,
+  frontpage:String
 });
 
 const AddWork = mongoose.model("addwork", addWorkSchema);

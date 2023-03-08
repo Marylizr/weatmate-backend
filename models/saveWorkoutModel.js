@@ -7,6 +7,7 @@ const saveWorkSchema = new Schema({
   name: String,
   reps: Number,
   series: Number,
+  weight:Number,
   date: { type: Date, default: Date.now }
 
 });

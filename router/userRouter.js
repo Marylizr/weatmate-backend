@@ -1,23 +1,26 @@
-const express = require('express');
-const  UserController  = require('../controllers/usercontroler');
-const UserRouter = express.Router();
 const { authMiddleware } = require('../auth/authMiddleware');
-const {body} = require("express-validator");
+const express = require('express');
+const router = express.Router();
+const userController = require('../controllers/userController');
+
+ 
+router.post('/signup', userController.signup);
+
+router.post('/login', userController.login)
+
+router.get('/me', authMiddleware, userController.findOne);
+ 
+router.get('/:id', authMiddleware, userController.allowIfLoggedin, userController.getUser);
+ 
+router.get('/', authMiddleware, userController.allowIfLoggedin, userController.grantAccess('readAny', 'profile'), userController.getUsers);
+ 
+router.put('/:id', authMiddleware, userController.allowIfLoggedin, userController.grantAccess('updateAny', 'profile'), userController.updateUser);
+ 
+router.delete('/:id', authMiddleware, userController.allowIfLoggedin, userController.grantAccess('deleteAny', 'profile'), userController.deleteUser);
 
 
-UserRouter.get('/', authMiddleware, UserController.findAll);
-
-UserRouter.get('/:id', authMiddleware, UserController.findOne);
-
-UserRouter.post('/', body("email", "Email must be a valid email.").isEmail(), UserController.create)
-
-UserRouter.get('/me', authMiddleware, UserController.findOneName);
-
-UserRouter.delete('/:id', authMiddleware, UserController.delete);
-
-UserRouter.patch('/', authMiddleware, UserController.update);
-
-UserRouter.put('/', authMiddleware, UserController.update);
+module.exports = {router};
 
 
-module.exports = { UserRouter };
+
+ 

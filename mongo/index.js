@@ -13,3 +13,4 @@ mongoose.set('strictQuery', false);
 
 
 module.exports = mongo;
+
