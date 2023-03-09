@@ -1,25 +1,33 @@
 const { authMiddleware } = require('../auth/authMiddleware');
 const express = require('express');
-const router = express.Router();
+const UserRouter = express.Router();
 const userController = require('../controllers/userController');
 
  
-router.post('/signup', userController.signup);
+UserRouter.post('/', userController.create);
 
-router.post('/login', userController.login)
+UserRouter.post('/login', userController.login);
 
-router.get('/me', authMiddleware, userController.findOne);
+UserRouter.get('/',  userController.findAll);
+
+UserRouter.get('/me',  userController.findOne);
+
+UserRouter.patch('/', authMiddleware, userController.update);
+
+UserRouter.put('/',authMiddleware, userController.update);
+
+UserRouter.delete('/id', authMiddleware, userController.delete);
  
-router.get('/:id', authMiddleware, userController.allowIfLoggedin, userController.getUser);
+// router.get('/:id',  userController.allowIfLoggedin, userController.getUser);
  
-router.get('/', authMiddleware, userController.allowIfLoggedin, userController.grantAccess('readAny', 'profile'), userController.getUsers);
+// router.get('/',  userController.allowIfLoggedin, userController.grantAccess('readAny', 'profile'), userController.getUsers);
  
-router.put('/:id', authMiddleware, userController.allowIfLoggedin, userController.grantAccess('updateAny', 'profile'), userController.updateUser);
+// router.put('/:id', userController.allowIfLoggedin, userController.grantAccess('updateAny', 'profile'), userController.updateUser);
  
-router.delete('/:id', authMiddleware, userController.allowIfLoggedin, userController.grantAccess('deleteAny', 'profile'), userController.deleteUser);
+// router.delete('/:id', userController.allowIfLoggedin, userController.grantAccess('deleteAny', 'profile'), userController.deleteUser);
 
 
-module.exports = {router};
+module.exports = {UserRouter};
 
 
 
