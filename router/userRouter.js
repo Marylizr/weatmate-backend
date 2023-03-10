@@ -1,26 +1,24 @@
-const { authMiddleware } = require('../auth/authMiddleware');
 const express = require('express');
-const router = express.Router();
-const userController = require('../controllers/userController');
-
- 
-router.post('/signup', userController.signup);
-
-router.post('/login', userController.login)
-
-router.get('/me', authMiddleware, userController.findOne);
- 
-router.get('/:id', authMiddleware, userController.allowIfLoggedin, userController.getUser);
- 
-router.get('/', authMiddleware, userController.allowIfLoggedin, userController.grantAccess('readAny', 'profile'), userController.getUsers);
- 
-router.put('/:id', authMiddleware, userController.allowIfLoggedin, userController.grantAccess('updateAny', 'profile'), userController.updateUser);
- 
-router.delete('/:id', authMiddleware, userController.allowIfLoggedin, userController.grantAccess('deleteAny', 'profile'), userController.deleteUser);
+const { UserController } = require('../controllers')
+const UserRouter = express.Router();
+const { authMiddleware } = require('../auth/authMiddleware');
 
 
-module.exports = {router};
+UserRouter.get('/', UserController.findAll);
+
+// UserRouter.get('/:id', UserController.findOne);
+
+UserRouter.post('/', UserController.create)
+
+UserRouter.get('/', authMiddleware, UserController.findOne);
+
+UserRouter.get('/me', authMiddleware, UserController.findOne);
+
+UserRouter.delete('/:id', authMiddleware, UserController.delete);
+
+UserRouter.patch('/', authMiddleware, UserController.update);
+
+UserRouter.put('/',authMiddleware, UserController.update);
 
 
-
- 
+module.exports = { UserRouter };
