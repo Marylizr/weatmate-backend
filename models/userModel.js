@@ -7,7 +7,7 @@ const UserSchema = new Schema({
    image: String,
    age: Number,
    height: Number,
-   Weight: Number,
+   weight: Number,
    goal: String
 });
 

@@ -7,6 +7,7 @@ const favSchema = new Schema({
    description: String,
    reps: Number,
    series: Number,
+   weight: Number,
    picture: String,
    video: String
 });

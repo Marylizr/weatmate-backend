@@ -1,9 +1,9 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const appRouter = require('./router');
 require('dotenv').config();
+const mongoConnection = require('./mongo/index')
 
 const app = express();
 const port = process.env.PORT;
@@ -13,11 +13,6 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
-mongoose
- .connect('mongodb://localhost:27017/rbac')
- .then(() => {
-  console.log('Connected to the Database successfully');
- });
  
  app.use(bodyParser.json());
 
