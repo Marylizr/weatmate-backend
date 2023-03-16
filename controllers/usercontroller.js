@@ -125,7 +125,6 @@ exports.getUsers = async (req, res, next) => {
     } catch (e) {
         return res.status(400).send("Invalid token");
     }
-
     const user = await User.findById(tokenData.id);
     if(user){
         req.sessionUser = user;

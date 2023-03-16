@@ -6,28 +6,16 @@ const LoginRouter  = require('../router/loginRouter');
 const {AddWorkoutRouter} = require('../router/addWorkoutRouter');
 const { SaveWorkRouter } = require ('../router/saveWorkoutRouter');
 const { FavRouter } = require('../router/favRouter');
-<<<<<<< HEAD
-const { UserRouter } = require('../router/usersRouter');
-const { SaveWorkRouter } = require('./saveWorkoutRouter'); 
 const {MessageRouter } = require('../router/contactRouter');
-const LoginRouter = require('../router/loginRouter');
 
-=======
-const {MessageRouter} = require('../router/contactRouter')
->>>>>>> original
 
 
 appRouter.use('/workouts', AddWorkoutRouter);
 appRouter.use('/saveworkout', SaveWorkRouter);
 appRouter.use('/fav', FavRouter);
 appRouter.use('/user', UserRouter);
-<<<<<<< HEAD
 appRouter.use('/contact', MessageRouter);
 appRouter.use('/', LoginRouter);
 
-=======
-appRouter.use('/', LoginRouter);
-appRouter.use('/contact', MessageRouter);
->>>>>>> original
 
 module.exports = appRouter;
