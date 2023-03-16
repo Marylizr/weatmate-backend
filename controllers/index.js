@@ -4,7 +4,6 @@ const SaveWorkController = require('../controllers/saveWorkoutController');
 const MessageController = require('../controllers/contactController');
 const UserController =require('../controllers/usercontroller');
 
-
 module.exports = {
   AddWorkoutController,
   FavController,
