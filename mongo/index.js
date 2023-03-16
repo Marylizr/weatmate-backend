@@ -1,11 +1,8 @@
-import { connect, connection, set } from 'mongoose';
+const mongoose = require('mongoose');
 const databaseURL = process.env.DATABASE_URL;
 
-connect(databaseURL);
-
-const mongo = connection;
-mongo.on('error', (error) => console.error(error));
-mongo.once('open', () => {
+mongoose.connect(databaseURL)
+.then(() => {
     console.log('connected to beFit database');
 });
 

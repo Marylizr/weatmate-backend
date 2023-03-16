@@ -2,11 +2,11 @@ const jwt = require("jsonwebtoken");
 const User = require('../models/userModel');
 
 exports.authMiddleware = async (req, res, next) => {
-    const token = req.headers.authorization?.split(" ")[1];
+    const accessToken = req.headers.authorization?.split(" ")[1];
 
     let tokenData;
     try {
-        tokenData = jwt.verify(token, process.env.JWT_SECRET);
+        tokenData = jwt.verify(accessToken, process.env.JWT_SECRET);
     } catch (e) {
         return res.status(400).send("Invalid token");
     }

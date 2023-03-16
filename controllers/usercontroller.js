@@ -44,35 +44,29 @@ exports.signup = async (req, res, next) => {
 }
  
 
-  exports.login = async (req, res, next) => {
+exports.login = async (req, res, next) => {
+  try {
+   const { email, password } = req.body;
+   const user = await User.findOne({ email: email });
+   const checkPassword = bcrypt.compareSync(password, user.password);
 
-   async function validatePassword(plainPassword, hashPassword) {
-       return await bcrypt.compare(plainPassword, hashPassword);
-   }
+    if (!user) 
+      return res.status(400).send("Email does not exist");
+    if (!checkPassword) 
+      return res.status(400).send("Password does not match");
 
-   try {
-    const {  email, password } = req.body;
-    const user = await User.findOne({ email });
-      if (!user) 
-        return 
-          next(new Error('Email does not exist'));
-
-    const validPassword = await validatePassword(password, user.password);
-      if (!validPassword) 
-        return next(new Error('Password is not correct'));
-
-     const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, 
-      { expiresIn: "1H"
-    });
-    await User.findByIdAndUpdate(user._id, { accessToken })
-      res.status(200).json({
-      data: { email: user.email, role: user.role },
-      accessToken
-  })
-   } catch (error) {
-    next(error);
-   }
+   const accessToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+    expiresIn: "1d"
+   });
+   await User.findByIdAndUpdate(user._id, { accessToken })
+   res.status(200).json({
+    email: user.email, role: user.role,
+    accessToken: accessToken
+   })
+  } catch (error) {
+   next(error);
   }
+ }
 
   exports.update = async (req,res) => {
    const user = req.sessionUser;
@@ -122,6 +116,21 @@ exports.getUsers = async (req, res, next) => {
     next(error)
    }
   }
+
+  exports.getOne = async (req, res) =>{ 
+    const accessToken = req.headers.authorization?.split(" ")[1];
+    let tokenData;
+    try {
+        tokenData = jwt.verify(accessToken, process.env.JWT_SECRET);
+    } catch (e) {
+        return res.status(400).send("Invalid token");
+    }
+
+    const user = await User.findById(tokenData.id);
+    if(user){
+        req.sessionUser = user;
+    }
+  };
    
   exports.updateUser = async (req, res, next) => {
    try {

@@ -7,7 +7,7 @@ const User = require('./models/userModel')
 const cors = require('cors');
 const appRouter = require('./router');
 require("dotenv").config();
-
+const databaseURL = process.env.DATABASE_URL;
 
 const app = express();
 
@@ -17,6 +17,11 @@ app.use(cors({
   origin: '*',
   optionsSuccessStatus: 200
 }));
+
+mongoose.connect(databaseURL)
+.then(() => {
+    console.log('connected to beFit database');
+});
 
 
  app.use(bodyParser.json());
@@ -36,5 +41,5 @@ app.use(async (req, res, next) => {
 });
 
 app.use('/', appRouter); app.listen(PORT, () => {
-  console.log('Server is listening on Port:', PORT)
+  console.log('BeFit server is listening on Port:', PORT)
 })
