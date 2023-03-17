@@ -8,7 +8,15 @@ const UserSchema = new Schema({
    age: Number,
    height: Number,
    weight: Number,
-   goal: String
+   goal: String,
+   role: {
+      type: String,
+      default: 'basic',
+      enum: ["basic", "supervisor", "admin"]
+     },
+     token: {
+      type: String
+     }
 });
 
 var User = model("user", UserSchema);

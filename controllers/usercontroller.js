@@ -11,7 +11,7 @@ exports.findAll = async (req, res) =>{
 
   
 exports.create = async (req, res) => {
-    const { name, email, password, age, weight, height, goal } = req.body;
+    const { name, email, password, age, weight, height, goal, role } = req.body;
     const existingUser = await User.findOne( { email: email })
     console.log('req.body', req.body)
 
@@ -33,12 +33,13 @@ exports.create = async (req, res) => {
       age: age,
       weight: weight,
       height:height,
-      goal:goal
+      goal:goal, 
+      role: role || "basic"
     });
     const userSaved = await newUser.save();
   
     const token = jwt.sign({ id: userSaved._id }, process.env.JWT_SECRET, {expiresIn: '1h' });
-    return res.status(201).json({ token: token, id: userSaved._id  });
+    return res.status(201).json({ token: token, id: userSaved._id, role: userSaved.role  });
     
   };
   
