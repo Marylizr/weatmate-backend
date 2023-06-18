@@ -1,0 +1,45 @@
+const { Configuration, OpenAIApi } = require('openai');
+
+const configuration = new Configuration({
+  organization: "org-Vk2U2DI5BA7Hpq6iiTHFUblK",
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+
+exports.chatCompletion = async (req, res) => {
+  try {
+    const { prompt } = req.body;
+
+    const openai = new OpenAIApi(configuration);
+
+    const completion = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {"role": "system", 
+        "content": "You are a helpful assistant."
+      }, 
+      {role: "user", 
+      content: `${prompt}`}
+    ],
+      max_tokens: 100,
+    });
+    const response = completion.data.choices[0].message.content;
+    res.send(response);
+    
+    console.log(completion.data.choices[0].message);
+
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).send('An error occurred')
+    
+  }
+  console.log(configuration)
+};
+
+
+
+
+  
+
+
+

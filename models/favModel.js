@@ -8,6 +8,7 @@ const favSchema = new Schema({
    reps: Number,
    series: Number,
    weight: Number,
+   date: { type: Date, default: Date.now },
    picture: String,
    video: String
 });

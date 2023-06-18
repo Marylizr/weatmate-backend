@@ -39,7 +39,11 @@ exports.create = async (req, res) => {
     const userSaved = await newUser.save();
   
     const token = jwt.sign({ id: userSaved._id }, process.env.JWT_SECRET, {expiresIn: '1h' });
-    return res.status(201).json({ token: token, id: userSaved._id, role: userSaved.role  });
+    return res.status(201).json({ 
+      token: token, 
+      id: userSaved._id, 
+      role: userSaved.role, 
+      userName: userSaved.name  });
     
   };
   

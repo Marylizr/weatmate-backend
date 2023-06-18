@@ -31,6 +31,8 @@ const dataPosted = {
    name: data.name,
    description: data.description,
    reps: data.reps,
+   weight: data.weight,
+   date: data.date,
    series: data.series,
    picture: data.picture,
    video: data.video
