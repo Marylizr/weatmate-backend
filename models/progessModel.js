@@ -2,6 +2,8 @@ const { Schema, model } = require('mongoose');
 
 
 const progressSchema = new Schema({ 
+   name: String,
+   userId:String,
    weight: String,
    waist: String,
    hips: String,

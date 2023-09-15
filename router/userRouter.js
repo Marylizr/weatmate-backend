@@ -10,6 +10,12 @@ UserRouter.get('/', UserController.findAll);
 
 UserRouter.post('/', UserController.create)
 
+UserRouter.get('/email/:id', UserController.findOneEmail);
+
+UserRouter.get('/name/:id', UserController.findOneName);
+
+UserRouter.get('/id/:email', UserController.findOneId);
+
 UserRouter.get('/', authMiddleware, UserController.findOne);
 
 UserRouter.get('/me', authMiddleware, UserController.findOne);

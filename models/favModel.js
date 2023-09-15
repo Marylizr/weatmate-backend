@@ -2,6 +2,7 @@ const { Schema, model } = require('mongoose');
 
 
 const favSchema = new Schema({ 
+   userName: String,
    type: String,
    name: String,
    description: String,

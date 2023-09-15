@@ -27,6 +27,8 @@ exports.findOne = async (req, res) => {
 exports.create = async (req, res) => {
 const data = req.body;
 const dataPosted = {
+   name: data.name,
+   userId: data._id,
    weight: data.weight,
    waist: data.waist,
    hips: data.hips,
