@@ -32,6 +32,7 @@ const AddWork = require('../models/addWorkoutModel');
       description: data.description,
       reps: data.reps,
       series: data.series,
+      lidted: data.lifted,
       picture: data.picture,
       video: data.video
    }
@@ -40,7 +41,7 @@ const AddWork = require('../models/addWorkoutModel');
 
   await newWorkout.save()
 
-  console.log('Creating new Workout');
+  console.log(newWorkout, 'Creating new Workout');
 
   res.json({Message: "Your new workout was created Succesfully", newWorkout});
     

@@ -31,7 +31,7 @@ const dataPosted = {
    name: data.name,
    description: data.description,
    reps: data.reps,
-   weight: data.weight,
+   lifted: data.lifted,
    date: data.date,
    series: data.series,
    picture: data.picture,
@@ -41,11 +41,8 @@ const dataPosted = {
 const newFav = new Fav(dataPosted);
 
 await newFav.save()
-
-console.log('Creating new fav workout');
-
+console.log(newFav, 'Your new FAV Workout has been created')
 res.json({Message: "Your new fav workout was created Succesfully", newFav});
- 
 };
 
 

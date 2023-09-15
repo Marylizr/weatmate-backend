@@ -29,6 +29,7 @@
     "jsonwebtoken": "^9.0.0",
     "mongoose": "^6.9.1",
     "openai": "^3.2.1",
+    "react-calendar": "^4.6.0",
     "start": "^5.1.0"
   },
   "devDependencies": {

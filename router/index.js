@@ -8,6 +8,7 @@ const { SaveWorkRouter } = require ('../router/saveWorkoutRouter');
 const { FavRouter } = require('../router/favRouter');
 const {MessageRouter} = require('../router/contactRouter');
 const{ chatRouter} = require('../router/chatRouter');
+const { ProgressRouter } = require('./progressRouter');
 
 
 appRouter.use('/workouts', AddWorkoutRouter);
@@ -17,6 +18,7 @@ appRouter.use('/user', UserRouter);
 appRouter.use('/', LoginRouter);
 appRouter.use('/contact', MessageRouter);
 appRouter.use('/', chatRouter);
+appRouter.use('/progress', ProgressRouter);
 
 
 module.exports = appRouter;

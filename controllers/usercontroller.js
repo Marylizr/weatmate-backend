@@ -9,6 +9,26 @@ exports.findAll = async (req, res) =>{
   res.status(200).json(await User.find());
 };
 
+exports.findOneName = async (req, res) =>{
+  let id = req.params.id;
+  const userData = await User.findById(id);
+  return res.status(200).json(userData.name);
+};
+
+exports.findOneEmail = async (req, res) =>{
+  let id = req.params.id;
+  const userData = await User.findById(id);
+  return res.status(200).json(userData.email);
+};
+
+exports.findOneId = async (req, res) =>{
+  let email = req.params.email;
+  const userData = await User.find({"email": email});
+  if(!userData[0]) return res.status(201).json(null);
+  return res.status(200).json(userData[0]._id);
+};
+
+
   
 exports.create = async (req, res) => {
     const { name, email, password, age, weight, height, goal, role } = req.body;

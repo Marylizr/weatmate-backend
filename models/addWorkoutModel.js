@@ -8,6 +8,7 @@ const addWorkSchema = new Schema({
   description: String,
   reps: Number,
   series: Number,
+  lifted: Number,
   picture: String,
   video: String,
   frontpage:String

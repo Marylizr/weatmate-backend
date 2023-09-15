@@ -5,9 +5,9 @@ const favSchema = new Schema({
    type: String,
    name: String,
    description: String,
+   lifted: Number,
    reps: Number,
    series: Number,
-   weight: Number,
    date: { type: Date, default: Date.now },
    picture: String,
    video: String

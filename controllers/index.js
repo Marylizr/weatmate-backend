@@ -4,8 +4,8 @@ const SaveWorkController = require('../controllers/saveWorkoutController');
 const MessageController = require('../controllers/contactController');
 const UserController =require('../controllers/usercontroller');
 const LoginController = require('../controllers/loginController');
-const chatCompletion = require('../controllers/chatController')
-
+const chatCompletion = require('../controllers/chatController');
+const ProgressController = require('../controllers/progressController');
 
 module.exports = {
   AddWorkoutController,
@@ -14,7 +14,8 @@ module.exports = {
   MessageController,
   UserController,
   LoginController,
-  chatCompletion
+  chatCompletion,
+  ProgressController
  };  
  
  
