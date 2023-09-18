@@ -1,7 +1,10 @@
 const { Configuration, OpenAIApi } = require('openai');
+const ChatUser = require('../models/chatUser');
+
 
 const configuration = new Configuration({
-  ,
+  organization: "org-Vk2U2DI5BA7Hpq6iiTHFUblK",
+  apiKey:'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',
 });
 
 
@@ -20,7 +23,7 @@ exports.chatCompletion = async (req, res) => {
       {role: "user", 
       content: `${prompt}`}
     ],
-      max_tokens: 100,
+      max_tokens: 300,
     });
     const response = completion.data.choices[0].message.content;
     res.send(response);
@@ -32,13 +35,26 @@ exports.chatCompletion = async (req, res) => {
     res.status(500).send('An error occurred')
     
   }
-  console.log(configuration)
+  console.log(configuration);
+ 
+}
+
+exports.findAll = async (req, res) =>{
+  res.status(200).json(await ChatUser.find());
 };
 
 
-
-
+exports.create = async (req, res) => {
+  const data = req.body;
+  const dataPosted = {
+      userName:data.userName,
+      content: data.content,
+      infoType: data.infotype,
+  }
   
-
-
-
+  const newChat = new ChatUser(dataPosted); 
+  
+  await newChat.save(); 
+  console.log(newChat, 'Your new chat prompt has been created'); 
+  res.json( newChat );
+};

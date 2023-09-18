@@ -7,7 +7,7 @@ const {AddWorkoutRouter} = require('../router/addWorkoutRouter');
 const { SaveWorkRouter } = require ('../router/saveWorkoutRouter');
 const { FavRouter } = require('../router/favRouter');
 const {MessageRouter} = require('../router/contactRouter');
-const{ chatRouter} = require('../router/chatRouter');
+const chatRouter = require('../router/chatRouter');
 const { ProgressRouter } = require('./progressRouter');
 
 

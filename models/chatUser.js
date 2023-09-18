@@ -1,21 +1,30 @@
 const crypto = require ('crypto');
-const { Schema, model } = require('mongoose');
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
+const ObjectId = Schema.ObjectId;
 
-const ChatUserSchema = new Schema({
+
+
+const ChatUserSchema = new Schema ({
+
+   content: String,
+
    userName: {
       type: String,
-      required: true,
-      unique: true
+      unique: false,
+   },
+
+   infoType: {
+      type: String,
+      default: 'healthy-tips',
+      enum: ["healthy-tips", "recipes", "workouts"]
    },
    password: {
       type: String,
-      required: true,
-      select: false
    },
    salt: {
       type: String,
-      required: true,
-      select:false
+      
    }
 }, {
    timestamp: true
@@ -32,7 +41,8 @@ ChatUserSchema.methods.setPassword = function(password) {
       "sha512",
    ).toString("hex")
 };
-userSchema.methods.validPassword = function (password) {
+
+ChatUserSchema.methods.validPassword = function (password) {
    const hash = crypto.pbkdf2Sync(
      password,
      this.salt,
@@ -44,6 +54,8 @@ userSchema.methods.validPassword = function (password) {
    return this.password === hash;
  };
 
-const ChatUser = model("chatUser", ChatUserSchema);
 
+const ChatUser = mongoose.model("chatUser", ChatUserSchema);
 module.exports = ChatUser;
+
+

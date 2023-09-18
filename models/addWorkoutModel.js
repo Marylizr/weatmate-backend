@@ -11,7 +11,6 @@ const addWorkSchema = new Schema({
   lifted: Number,
   picture: String,
   video: String,
-  frontpage:String
 });
 
 const AddWork = mongoose.model("addwork", addWorkSchema);
