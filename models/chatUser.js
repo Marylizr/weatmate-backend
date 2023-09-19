@@ -14,10 +14,9 @@ const ChatUserSchema = new Schema ({
       unique: false,
    },
 
-   infoType: {
+   infotype: {
       type: String,
-      default: 'healthy-tips',
-      enum: ["healthy-tips", "recipes", "workouts"]
+      enum: ["healthy-tips", "recipes", "workouts"],
    },
    password: {
       type: String,
