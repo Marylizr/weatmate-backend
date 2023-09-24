@@ -8,6 +8,7 @@ const ObjectId = Schema.ObjectId;
 const ChatUserSchema = new Schema ({
 
    content: String,
+   picture: String,
 
    userName: {
       type: String,

@@ -4,7 +4,7 @@ const ChatUser = require('../models/chatUser');
 
 const configuration = new Configuration({
   organization: "org-Vk2U2DI5BA7Hpq6iiTHFUblK",
-  
+  apiKey:'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',
 });
 
 
@@ -50,6 +50,7 @@ exports.create = async (req, res) => {
       userName:data.userName,
       content: data.content,
       infotype: data.infotype,
+      picture: data.picture
   }
   
   const newChat = new ChatUser(dataPosted); 
