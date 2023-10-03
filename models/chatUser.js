@@ -24,10 +24,11 @@ const ChatUserSchema = new Schema ({
    },
    salt: {
       type: String,
-      
+   },
+   date: { 
+      type: Date, 
+      default: Date.now 
    }
-}, {
-   timestamp: true
 });
 
 ChatUserSchema.methods.setPassword = function(password) {

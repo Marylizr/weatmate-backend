@@ -20,10 +20,13 @@ exports.chatCompletion = async (req, res) => {
         {"role": "system", 
         "content": "You are a helpful assistant."
       }, 
-      {role: "user", 
-      content: `${prompt}`}
+      {
+        role: "user", 
+        content: `${prompt}`,
+    },
+
     ],
-      max_tokens: 300,
+      max_tokens: 150,
     });
     const response = completion.data.choices[0].message.content;
     res.send(response);
@@ -50,7 +53,8 @@ exports.create = async (req, res) => {
       userName:data.userName,
       content: data.content,
       infotype: data.infotype,
-      picture: data.picture
+      picture: data.picture,
+      date: Date.now()
   }
   
   const newChat = new ChatUser(dataPosted); 

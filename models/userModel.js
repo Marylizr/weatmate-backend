@@ -14,8 +14,12 @@ const UserSchema = new Schema({
       default: 'basic',
       enum: ["basic", "supervisor", "admin"]
      },
-     token: {
+   token: {
       type: String
+      },
+   gender: {
+      type: String,
+      enum: ["female", "male"]
      }
 });
 

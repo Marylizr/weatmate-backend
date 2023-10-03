@@ -31,7 +31,7 @@ exports.findOneId = async (req, res) =>{
 
   
 exports.create = async (req, res) => {
-    const { name, email, password, age, weight, height, goal, role } = req.body;
+    const { name, email, password, age, weight, height, goal, role, gender } = req.body;
     const existingUser = await User.findOne( { email: email })
     console.log('req.body', req.body)
 
@@ -54,6 +54,7 @@ exports.create = async (req, res) => {
       weight: weight,
       height:height,
       goal:goal, 
+      gender: gender,
       role: role || "basic"
     });
     const userSaved = await newUser.save();
