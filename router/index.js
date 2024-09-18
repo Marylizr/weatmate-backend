@@ -9,16 +9,19 @@ const { FavRouter } = require('../router/favRouter');
 const {MessageRouter} = require('../router/contactRouter');
 const chatRouter = require('../router/chatRouter');
 const { ProgressRouter } = require('./progressRouter');
+const { DesignedByPtRouter }  = require('../router/designedByPtRouter');
+
 
 
 appRouter.use('/workouts', AddWorkoutRouter);
-appRouter.use('/savechat', SaveWorkRouter);
+appRouter.use('/saveworkout', SaveWorkRouter);
 appRouter.use('/fav', FavRouter);
 appRouter.use('/user', UserRouter);
 appRouter.use('/', LoginRouter);
 appRouter.use('/contact', MessageRouter);
 appRouter.use('/', chatRouter);
 appRouter.use('/progress', ProgressRouter);
+appRouter.use('/personaltrainer', DesignedByPtRouter);
 
 
 module.exports = appRouter;
