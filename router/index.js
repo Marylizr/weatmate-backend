@@ -21,7 +21,7 @@ appRouter.use('/', LoginRouter);
 appRouter.use('/contact', MessageRouter);
 appRouter.use('/', chatRouter);
 appRouter.use('/progress', ProgressRouter);
-appRouter.use('/personaltrainer', DesignedByPtRouter);
+appRouter.use('/designedByPt', DesignedByPtRouter);
 
 
 module.exports = appRouter;
