@@ -8,7 +8,6 @@ const cors = require('cors');
 const appRouter = require('./router');
 require('dotenv').config();
 const mongo = require('./mongo/index');
-const { default: mongoose } = require('mongoose');
 const app = express();
 const port = process.env.PORT;
 
