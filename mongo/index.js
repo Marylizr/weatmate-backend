@@ -9,7 +9,7 @@ mongo.once('open', () => {
     console.log('connected to beFit database');
 });
 
-mongoose.set('strictQuery', false);
+mongoose.set('strictQuery', true);
 
 
 module.exports = mongo;

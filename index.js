@@ -20,7 +20,7 @@ app.use(cors({
 mongoose.set("strictQuery", false)
 
 const server = app.listen(port, () => {
-  console.log(`App listening at http://localhost:${port}`)
+  console.log(`SweatMate listening at http://localhost:${port}`)
 });
 
 app.use("/", appRouter);
