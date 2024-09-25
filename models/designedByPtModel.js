@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const ObjectId = Schema.ObjectId;
 
-const saveWorkSchema = new Schema({
+const DesignedByPtSchema = new Schema({
     userName: String,
     type: String,
     name: String,
@@ -16,6 +16,6 @@ const saveWorkSchema = new Schema({
 
 });
 
-const SaveWork = mongoose.model("saveWork", saveWorkSchema);
+const DesignedByPt = mongoose.model("designedByPt", DesignedByPtSchema);
 
-module.exports = SaveWork;
+module.exports = DesignedByPt;

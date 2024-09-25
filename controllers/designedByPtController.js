@@ -1,14 +1,14 @@
 // const db = require('./mongo');
-const SaveWork = require('../models/saveWorkoutModel');
+const DesignedByPt = require('../models/designedByPtModel');
 
 
 exports.findAll = async (req, res) =>{
-   res.status(200).json(await SaveWork.find());
+   res.status(200).json(await DesignedByPt.find());
 };
 
 exports.delete = (req,res) => { 
 const id = req.params.id;
-SaveWork.findByIdAndDelete(id, {}, (error, result) => {
+DesignedByPt.findByIdAndDelete(id, {}, (error, result) => {
    if(error){
       res.status(500).json({error: error.message});
    } else if(!result){
@@ -20,7 +20,7 @@ SaveWork.findByIdAndDelete(id, {}, (error, result) => {
 };
 
 exports.findOne = async (req, res) => {
-   res.status(200).json(await SaveWork.findOne(req.params.name));
+   res.status(200).json(await DesignedByPt.findOne(req.params.name));
 }
 
 
@@ -39,11 +39,11 @@ const dataPosted = {
    video: data.video
 }
 
-const newWorkout = new SaveWork(dataPosted);
+const newDesign = new DesignedByPt(dataPosted);
 
-await newWorkout.save()
-console.log(newWorkout, 'Your new Workout has been created')
-res.json({Message: "Your new workout was created Succesfully", newWorkout});
+await newDesign.save()
+console.log(newDesign, 'Your new Workout has been created')
+res.json({Message: "Your new workout was created Succesfully", newDesign});
 };
 
 
@@ -51,8 +51,8 @@ exports.update = async(req, res) => {
 const id = req.params.id;
 const data = req.body;
 
-const updatedWorkout = await SaveWork.findOneAndUpdate(id, data)
+const updatedDesign = await DesignedByPt.findOneAndUpdate(id, data)
 
-res.status(200).json({message: "Your workout has been updated Succesfully", updatedWorkout})
+res.status(200).json({message: "Your workout has been updated Succesfully", updatedDesign})
 }
 
