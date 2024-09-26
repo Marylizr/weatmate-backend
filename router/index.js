@@ -17,7 +17,6 @@ appRouter.use('/workouts', AddWorkoutRouter);
 appRouter.use('/saveworkout', SaveWorkRouter);
 appRouter.use('/fav', FavRouter);
 appRouter.use('/user', UserRouter);
-appRouter.use('/', LoginRouter);
 appRouter.use('/contact', MessageRouter);
 appRouter.use('/', chatRouter);
 appRouter.use('/progress', ProgressRouter);

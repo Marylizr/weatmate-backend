@@ -1,10 +1,13 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const jwt = require('jsonwebtoken');
+const path = require('path')
+const User = require('./models/userModel')
 const cors = require('cors');
 const appRouter = require('./router');
 require('dotenv').config();
 const mongo = require('./mongo/index');
-const { default: mongoose } = require('mongoose');
 const app = express();
 const port = process.env.PORT;
 
