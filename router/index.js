@@ -12,7 +12,7 @@ const { ProgressRouter } = require('./progressRouter');
 const { DesignedByPtRouter }  = require('../router/designedByPtRouter');
 
 
-
+appRouter.use('/', LoginRouter);
 appRouter.use('/workouts', AddWorkoutRouter);
 appRouter.use('/saveworkout', SaveWorkRouter);
 appRouter.use('/fav', FavRouter);
