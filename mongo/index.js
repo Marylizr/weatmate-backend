@@ -6,7 +6,7 @@ mongoose.connect(databaseURL);
 const mongo = mongoose.connection;
 mongo.on('error', (error) => console.error(error));
 mongo.once('open', () => {
-    console.log('connected to beFit database');
+    console.log('connected to SweatMate database');
 });
 
 mongoose.set('strictQuery', true);

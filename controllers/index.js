@@ -7,6 +7,8 @@ const LoginController = require('../controllers/loginController');
 const chatCompletion = require('../controllers/chatController');
 const ProgressController = require('../controllers/progressController');
 const DesignedByPtController = require('../controllers/designedByPtController');
+const EventController = require('../controllers/eventController');
+
 
 module.exports = {
   AddWorkoutController,
@@ -17,7 +19,8 @@ module.exports = {
   LoginController,
   chatCompletion,
   ProgressController,
-  DesignedByPtController
+  DesignedByPtController,
+  EventController
  };  
  
  
