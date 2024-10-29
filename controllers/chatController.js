@@ -1,11 +1,16 @@
 const { Configuration, OpenAIApi } = require('openai');
 const ChatUser = require('../models/chatUser');
 
-
 const configuration = new Configuration({
   organization: "org-Vk2U2DI5BA7Hpq6iiTHFUblK",
-  apiKey:'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',
+  apiKey: "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",
 });
+
+
+// const configuration = new Configuration({
+//   organization: "org-Vk2U2DI5BA7Hpq6iiTHFUblK",
+//   apiKey:'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',
+// });
 
 
 exports.chatCompletion = async (req, res) => {
@@ -15,7 +20,7 @@ exports.chatCompletion = async (req, res) => {
     const openai = new OpenAIApi(configuration);
 
     const completion = await openai.createChatCompletion({
-      model: "gpt-3.5-turbo",
+      model: 'gpt-4',
       messages: [
         {"role": "system", 
         "content": "You are a helpful assistant."

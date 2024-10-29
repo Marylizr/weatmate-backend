@@ -17,10 +17,11 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
+
  app.use(bodyParser.json());
  app.use(express.urlencoded({ extended:false }))
  
-mongoose.set("strictQuery", false)
+ mongoose.set('strictQuery', true);
 
 const server = app.listen(port, () => {
   console.log(`SweatMate listening at http://localhost:${port}`)
