@@ -3,7 +3,7 @@ const ChatUser = require('../models/chatUser');
 
 const configuration = new Configuration({
   organization: "org-Vk2U2DI5BA7Hpq6iiTHFUblK",
-  apiKey: "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",
+  apiKey: "",
 });
 
 
