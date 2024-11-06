@@ -124,7 +124,10 @@ exports.delete = async (req, res) => {
 };
 
 exports.update = async (req, res) => {
-  const user = req.sessionUser;
+  const { id } = req.params; // Get user ID from request parameters
+
+  // Check if the user exists
+  const user = await User.findById(id);
   if (!user) {
     return res.status(404).json({ message: "User not found" });
   }
@@ -149,7 +152,8 @@ exports.update = async (req, res) => {
       updateData.location = req.body.location || user.location;
     }
 
-    const updatedUser = await User.findByIdAndUpdate(user._id, updateData, { new: true, runValidators: true }).select('-password');
+    // Update the user in the database
+    const updatedUser = await User.findByIdAndUpdate(id, updateData, { new: true, runValidators: true }).select('-password');
 
     res.status(200).json({ message: "User has been updated successfully", updatedUser });
   } catch (err) {
