@@ -22,9 +22,9 @@ UserRouter.get('/me', authMiddleware, UserController.findOne);
 
 UserRouter.delete('/:id', authMiddleware, UserController.delete);
 
-UserRouter.patch('/:id', authMiddleware, UserController.update);
+UserRouter.patch('/', authMiddleware, UserController.update);
 
-UserRouter.put('/:id',authMiddleware, UserController.update);
+UserRouter.put('/',authMiddleware, UserController.update);
 
 
 module.exports = { UserRouter };
