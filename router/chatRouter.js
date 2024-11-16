@@ -3,7 +3,7 @@ const  chatController = require( "../controllers/chatController.js");
 const chatRouter = express.Router();
 const { authMiddleware } = require('../auth/authMiddleware');
 
-chatRouter.post('/chat', chatController.chatCompletion);
+chatRouter.post('/chatCompletion', chatController.chatCompletion);
 
 chatRouter.post('/savePrompt', chatController.create);
 
