@@ -8,6 +8,7 @@ const chatCompletion = require('../controllers/chatController');
 const ProgressController = require('../controllers/progressController');
 const DesignedByPtController = require('../controllers/designedByPtController');
 const EventController = require('../controllers/eventController');
+const PreWorkoutController = require('../controllers/preWorkoutController');
 
 
 module.exports = {
@@ -20,7 +21,8 @@ module.exports = {
   chatCompletion,
   ProgressController,
   DesignedByPtController,
-  EventController
+  EventController,
+  PreWorkoutController
  };  
  
  

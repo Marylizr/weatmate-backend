@@ -11,6 +11,7 @@ const chatRouter = require('../router/chatRouter');
 const { ProgressRouter } = require('./progressRouter');
 const { DesignedByPtRouter }  = require('../router/designedByPtRouter');
 const { EventRouter }  = require('../router/eventRouter');
+const { PreWorkoutRouter } = require('./preWorkoutRouter');
 
 
 appRouter.use('/', LoginRouter);
@@ -23,6 +24,7 @@ appRouter.use('/', chatRouter);
 appRouter.use('/progress', ProgressRouter);
 appRouter.use('/personaltrainer', DesignedByPtRouter);
 appRouter.use('/events', EventRouter);
+appRouter.use('/preWorkout', PreWorkoutRouter);
 
 
 module.exports = appRouter;
