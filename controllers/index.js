@@ -9,6 +9,9 @@ const ProgressController = require('../controllers/progressController');
 const DesignedByPtController = require('../controllers/designedByPtController');
 const EventController = require('../controllers/eventController');
 const PreWorkoutController = require('../controllers/preWorkoutController');
+const MealPlanController = require('../controllers/mealPlantController');
+const MoodTracker = require('../controllers/moodTrackerController');
+
 
 
 module.exports = {
@@ -22,7 +25,9 @@ module.exports = {
   ProgressController,
   DesignedByPtController,
   EventController,
-  PreWorkoutController
+  PreWorkoutController,
+  MealPlanController,
+  MoodTracker,
  };  
  
  

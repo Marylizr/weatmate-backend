@@ -12,6 +12,9 @@ const { ProgressRouter } = require('./progressRouter');
 const { DesignedByPtRouter }  = require('../router/designedByPtRouter');
 const { EventRouter }  = require('../router/eventRouter');
 const { PreWorkoutRouter } = require('./preWorkoutRouter');
+const { MealPlanRouter } = require('./mealPlanRouter');
+const { MoodTrackerRouter } = require('./moodTrackerRouter');
+
 
 
 appRouter.use('/', LoginRouter);
@@ -25,6 +28,7 @@ appRouter.use('/progress', ProgressRouter);
 appRouter.use('/personaltrainer', DesignedByPtRouter);
 appRouter.use('/events', EventRouter);
 appRouter.use('/preWorkout', PreWorkoutRouter);
-
+appRouter.use('/mealPlan', MealPlanRouter);
+appRouter.use('/moodTracker', MoodTrackerRouter);
 
 module.exports = appRouter;
