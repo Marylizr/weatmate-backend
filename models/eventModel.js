@@ -29,6 +29,10 @@ const EventSchema = new Schema({
     ref: 'User', // Reference to the User model
     required: false // Optional, can be null for trainer-only events
   },
+  customerEmail: {
+    type: String, // To store the customer's email for sending confirmations
+    required: false
+  },
   location: {
     type: String
   },
@@ -36,14 +40,25 @@ const EventSchema = new Schema({
     type: String
   },
   trainerOnly: {
-    type: Boolean, // This indicates if the event is trainer-only
-    default: false // Default is false unless explicitly set
+    type: Boolean, // Indicates if the event is trainer-only
+    default: false
   },
   status: {
     type: String,
-    enum: ["pending", "completed", "canceled"], // Status options for the event
-    default: "pending" // Default to pending
-  }
+    enum: ["pending", "completed", "canceled"],
+    default: "pending"
+  },
+  confirmationStatus: {
+    type: String,
+    enum: ["not_sent", "sent", "confirmed"],
+    default: "not_sent" // Track the status of the email confirmation
+  },
+  rescheduleHistory: [
+    {
+      previousDate: Date,
+      rescheduledAt: { type: Date, default: Date.now } // Timestamp of when the reschedule happened
+    }
+  ]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Event', EventSchema);

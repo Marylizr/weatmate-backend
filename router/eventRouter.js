@@ -21,4 +21,13 @@ EventRouter.put('/:id', authenticateTrainer, EventController.update);
 // Update an event partially by ID (only accessible to authenticated trainers)
 EventRouter.patch('/:id', authenticateTrainer, EventController.update);
 
+// Confirm an event and send a confirmation email (only accessible to authenticated trainers)
+EventRouter.put('/:id/confirm', authenticateTrainer, EventController.confirmEvent);
+
+// Reschedule an event (only accessible to authenticated trainers)
+EventRouter.put('/:id/reschedule', authenticateTrainer, EventController.rescheduleEvent);
+
+// Update event status (custom route to mark as completed or canceled)
+EventRouter.put('/:id/status', authenticateTrainer, EventController.updateEventStatus);
+
 module.exports = { EventRouter };

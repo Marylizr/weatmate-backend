@@ -1,11 +1,11 @@
 const { Configuration, OpenAIApi } = require('openai');
 const ChatUser = require('../models/chatUser');
-const OpenAI = require('openai');
+const OPENAI_API_KEY = require('dotenv').config();
 
 // Initialize OpenAI Configuration
 const configuration = new Configuration({
   organization: 'org-Vk2U2DI5BA7Hpq6iiTHFUblK',
-  apiKey: ''
+  apiKey: process.env.OPENAI_API_KEY
 });
 
 
