@@ -57,7 +57,7 @@ exports.findAll = async (req, res) => {
 // Controller to Create a New Chat User Entry
 exports.create = async (req, res) => {
   try {
-    const { userName, content, infotype, subCategory, picture } = req.body;
+    const { name, content, infotype, subCategory, picture } = req.body;
 
     // Validate Required Fields
     if (!userName || !content || !infotype) {
@@ -101,7 +101,7 @@ exports.create = async (req, res) => {
 
     // Prepare Data for Insertion
     const dataPosted = {
-      userName,
+      name,
       content,
       infotype,
       subCategory: subCategory || null, // Ensure subCategory is optional

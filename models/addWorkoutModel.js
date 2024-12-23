@@ -4,7 +4,7 @@ const ObjectId = Schema.ObjectId;
 
 const addWorkSchema = new Schema({
   type: String,
-  name: String,
+  workoutName: String,
   description: String,
   reps: Number,
   series: Number,

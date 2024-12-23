@@ -38,7 +38,7 @@ exports.create = async (req, res) => {
 
     // Validate payload
     payload.forEach((workout, index) => {
-      if (!workout.userName || !workout.infotype || !workout.content || !workout.subCategory) {
+      if (!workout.name || !workout.infotype || !workout.content || !workout.subCategory) {
         console.log(`Workout at index ${index} is missing required fields:`, workout);
         throw new Error(`Workout at index ${index} is invalid.`);
       }
@@ -48,7 +48,7 @@ exports.create = async (req, res) => {
     const newWorkouts = [];
     for (const workout of payload) {
       const exists = await PreWorkout.findOne({
-        userName: workout.userName,
+        name: workout.name,
         infotype: workout.infotype,
         content: workout.content,
         subCategory: workout.subCategory,
@@ -60,7 +60,7 @@ exports.create = async (req, res) => {
       }
 
       const newPreWorkout = new PreWorkout({
-        userName: workout.userName,
+        name: workout.name,
         infotype: workout.infotype,
         content: workout.content,
         date: workout.date || new Date(),

@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const MoodTrackerSchema = new mongoose.Schema({
-  userName: {
+  name: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,

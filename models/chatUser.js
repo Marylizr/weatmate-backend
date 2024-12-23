@@ -7,7 +7,7 @@ const ChatUserSchema = new Schema({
   content: String,
   picture: String,
 
-  userName: {
+  name: {
     type: String,
     unique: false,
   },

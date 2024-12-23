@@ -48,7 +48,7 @@ exports.findOne = async (req, res) => {
 // Create a new mood entry
 exports.create = async (req, res) => {
   const {
-    userName, // Should be the user's ID
+    name, // Should be the user's ID
     mood,
     comments = '',
     date = new Date(),
@@ -57,13 +57,13 @@ exports.create = async (req, res) => {
   } = req.body;
 
   // Validate that userName is a valid ObjectId
-  if (!mongoose.Types.ObjectId.isValid(userName)) {
+  if (!mongoose.Types.ObjectId.isValid(name)) {
     return res.status(400).json({ error: "Invalid userName (must be a valid ObjectId)." });
   }
 
   try {
     const newMood = new MoodTracker({
-      userName, // Should match the schema field name
+      name, // Should match the schema field name
       mood,
       comments,
       date,

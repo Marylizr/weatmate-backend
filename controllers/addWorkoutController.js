@@ -28,7 +28,7 @@ const AddWork = require('../models/addWorkoutModel');
    const data = req.body;
    const dataPosted = {
       type: data.type,
-      name: data.name,
+      workoutName: data.workoutName,
       description: data.description,
       reps: data.reps,
       series: data.series,

@@ -3,9 +3,9 @@ const Schema = mongoose.Schema;
 const ObjectId = Schema.ObjectId;
 
 const saveWorkSchema = new Schema({
-    userName: String,
-    type: String,
     name: String,
+    type: String,
+    wokoutName: String,
     description: String,
     lifted: Number,
     reps: Number,

@@ -1,23 +1,45 @@
 const jwt = require("jsonwebtoken");
 const User = require('../models/userModel');
 
+
 exports.authMiddleware = async (req, res, next) => {
-    const accessToken = req.headers.authorization?.split(" ")[1];
+  const authHeader = req.headers.authorization;
 
-    let tokenData;
-    try {
-        tokenData = jwt.verify(accessToken, process.env.JWT_SECRET);
-    } catch (e) {
-        return res.status(400).send("Invalid token");
-    }
 
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Authorization header missing or malformed" });
+  }
+
+  const accessToken = authHeader.split(" ")[1];
+  console.log("Access Token:", accessToken); // Check the extracted token
+
+  let tokenData;
+  try {
+    tokenData = jwt.verify(accessToken, process.env.JWT_SECRET);
+    console.log("Decoded Token Data:", tokenData); // Check the decoded token data
+  } catch (e) {
+    return res.status(400).json({ message: "Invalid token", error: e.message });
+  }
+
+  try {
     const user = await User.findById(tokenData.id);
-    if(user){
-        req.sessionUser = user;
-    }
-    next();
+    console.log("User Found by Token:", user); // Check the user retrieved by token ID
 
+    if (user) {
+      req.user = user;
+      req.sessionUser = user;
+    } else {
+      return res.status(404).json({ message: "User not found" });
+    }
+  } catch (error) {
+    return res.status(500).json({ message: "Error retrieving user", error: error.message });
+  }
+
+  next();
 };
+
+
+
 
 exports.IsAdmin = (req, res, next) => {
     if (!req.user) {

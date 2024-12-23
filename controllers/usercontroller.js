@@ -12,7 +12,6 @@ exports.findAll = async (req, res) => {
   }
 };
 
-
 exports.getAllTrainers = async (req, res) => {
   try {
     const trainers = await User.find({ role: 'personal-trainer' }).select('name email _id');
@@ -21,7 +20,6 @@ exports.getAllTrainers = async (req, res) => {
     res.status(500).json({ message: 'Unable to retrieve trainers', error: error.message });
   }
 };
-
 
 exports.findOneName = async (req, res) => {
   try {
@@ -49,19 +47,37 @@ exports.findOneEmail = async (req, res) => {
 
 exports.findOneId = async (req, res) => {
   try {
-    const userData = await User.findOne({ email: req.params.email }).select('_id');
-    if (!userData) {
-      return res.status(404).json(null);
+    const { id } = req.params;
+
+    if (id === 'me') {
+      if (!req.sessionUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      return res.status(200).json(req.sessionUser);
+    } else {
+      const user = await User.findById(id).select('-password');
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      return res.status(200).json(user);
     }
-    res.status(200).json(userData._id);
   } catch (err) {
-    res.status(500).json({ message: "Unable to retrieve user ID", error: err.message });
+    res.status(500).json({ message: "Unable to retrieve user", error: err.message });
   }
 };
 
+exports.findOne = async (req, res) => {
+  try {
+    if (!req.sessionUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.status(200).json(req.sessionUser);
+  } catch (err) {
+    res.status(500).json({ message: "Unable to retrieve user", error: err.message });
+  }
+};
 
-
-
+// Create a new user
 exports.create = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -84,16 +100,19 @@ exports.create = async (req, res) => {
     bio,
     location,
     trainerId,
+    fitness_level,
+    medical_history,
+    medicalHistoryFile,
+    preferences,
+    sessionNotes,
   } = req.body;
 
   try {
-    // Check if the email already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({ message: "Email already in use" });
     }
 
-    // Check if the trainerId is valid if provided
     if (trainerId) {
       const trainer = await User.findById(trainerId);
       if (!trainer || trainer.role !== "personal-trainer") {
@@ -101,15 +120,12 @@ exports.create = async (req, res) => {
       }
     }
 
-    // Hash the password
     const salt = await bcrypt.genSalt(10);
     const passwordHashed = await bcrypt.hash(password, salt);
 
-    // Allow users to assign only 'basic', 'medium', or 'advanced' roles
-    const allowedRoles = ["basic", "medium", "advanced"];
-    let assignedRole = role && allowedRoles.includes(role) ? role : "basic";
+    const allowedRoles = ["basic", "admin", "personal-trainer"];
+    let assignedRole = allowedRoles.includes(role) ? role : "basic";
 
-    // Ensure only admins can create personal trainers or admins
     if (["admin", "personal-trainer"].includes(role)) {
       if (!req.user || req.user.role !== "admin") {
         return res.status(403).json({ message: "Unauthorized to assign this role" });
@@ -117,7 +133,6 @@ exports.create = async (req, res) => {
       assignedRole = role;
     }
 
-    // Create new user data object
     const newUserData = {
       name,
       email,
@@ -129,9 +144,13 @@ exports.create = async (req, res) => {
       gender,
       role: assignedRole,
       trainerId,
+      fitness_level,
+      medical_history,
+      medicalHistoryFile,
+      preferences,
+      sessionNotes,
     };
 
-    // Add personal trainer-specific fields if the role is 'personal-trainer' and fields are provided
     if (assignedRole === "personal-trainer") {
       if (degree) newUserData.degree = degree;
       if (experience) newUserData.experience = experience;
@@ -143,32 +162,17 @@ exports.create = async (req, res) => {
     const newUser = new User(newUserData);
     const userSaved = await newUser.save();
 
-    const token = jwt.sign({ id: userSaved._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
+    const token = jwt.sign({ id: userSaved._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
     return res.status(201).json({
       token,
       id: userSaved._id,
       role: userSaved.role,
-      userName: userSaved.name,
+      name: userSaved.name,
     });
   } catch (err) {
-    console.error('Error creating user:', err); // Log the error for debugging
+    console.error('Error creating user:', err);
     res.status(500).json({ message: "Unable to create user", error: err.message });
-  }
-};
-
-
-
-exports.findOne = async (req, res) => {
-  try {
-    if (!req.sessionUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    res.status(200).json(req.sessionUser);
-  } catch (err) {
-    res.status(500).json({ message: "Unable to retrieve user", error: err.message });
   }
 };
 
@@ -182,32 +186,28 @@ exports.delete = async (req, res) => {
   }
 };
 
+// Update user profile
 exports.update = async (req, res) => {
-  const { id } = req.params; // Get the user ID from the request parameters
-  const loggedInUser = req.sessionUser; // The currently logged-in user (admin)
-
-  let userToUpdate;
+  const { id } = req.params;
+  const loggedInUser = req.sessionUser;
 
   try {
-    // Determine which user to update
+    let userToUpdate;
+
     if (id) {
-      // If 'id' is provided, fetch the user to be updated (only allowed for admins)
       if (loggedInUser.role !== "admin") {
         return res.status(403).json({ message: "Access denied. Only admins can update other users' profiles." });
       }
-
       userToUpdate = await User.findById(id);
       if (!userToUpdate) {
         return res.status(404).json({ message: "User not found" });
       }
     } else {
-      // If no 'id' is provided, update the logged-in user's profile
       userToUpdate = loggedInUser;
     }
 
     const { password, email, ...updateData } = req.body;
 
-    // Check if the email is being updated and if it already exists for another user
     if (email && email !== userToUpdate.email) {
       const existingUser = await User.findOne({ email });
       if (existingUser && existingUser._id.toString() !== userToUpdate._id.toString()) {
@@ -216,29 +216,92 @@ exports.update = async (req, res) => {
       updateData.email = email;
     }
 
-    // Handle password update if a new password is provided
-    if (password && password.length > 0) {
+    if (password) {
       const salt = await bcrypt.genSalt(10);
       updateData.password = await bcrypt.hash(password, salt);
     }
 
-    // Prepare fields to update
-    const fieldsToUpdate = {
-      ...userToUpdate.toObject(), // Keep all existing data
-      ...updateData,              // Merge with updated data
-      email: updateData.email || userToUpdate.email,
-      password: updateData.password || userToUpdate.password,
-    };
+    Object.assign(userToUpdate, updateData);
 
-    // Perform the update
-    const updatedUser = await User.findByIdAndUpdate(
-      userToUpdate._id,
-      fieldsToUpdate,
-      { new: true, runValidators: true }
-    ).select('-password');
+    await userToUpdate.save();
 
-    res.status(200).json({ message: "User has been updated successfully", updatedUser });
+    res.status(200).json({ message: "User has been updated successfully", updatedUser: userToUpdate });
   } catch (err) {
     res.status(500).json({ message: "Unable to update user", error: err.message });
+  }
+};
+
+exports.addOrUpdateSessionNotes = async (req, res) => {
+  const { id } = req.params;
+  const { session_notes } = req.body;
+
+  try {
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Validate that each entry in session_notes is an object with a 'note' key
+    if (!Array.isArray(session_notes) || !session_notes.every(note => typeof note.note === 'string')) {
+      return res.status(400).json({ message: "Invalid session notes format" });
+    }
+
+    user.sessionNotes = session_notes;
+    await user.save();
+
+    res.status(200).json({ message: "Session notes updated successfully", sessionNotes: user.sessionNotes });
+  } catch (err) {
+    console.error('Error updating session notes:', err);
+    res.status(500).json({ message: "Unable to update session notes", error: err.message });
+  }
+};
+
+
+// Add or Update User Preferences
+exports.addOrUpdatePreferences = async (req, res) => {
+  const { id } = req.params;
+  const { preferences } = req.body;
+
+  try {
+    // Find the user by ID
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Update preferences
+    user.preferences = preferences;
+    await user.save();
+
+    res.status(200).json({ message: "User preferences updated successfully", preferences: user.preferences });
+  } catch (err) {
+    console.error('Error updating user preferences:', err);
+    res.status(500).json({ message: "Unable to update user preferences", error: err.message });
+  }
+};
+
+
+// Add or update user's medical history
+exports.addOrUpdateMedicalHistory = async (req, res) => {
+  const { id } = req.params;
+  const { medicalHistory } = req.body;
+
+  try {
+    // Find the user by ID
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Update the user's medical history
+    user.medicalHistory = medicalHistory;
+
+    // Save the updated user document
+    await user.save();
+
+    res.status(200).json({ message: "Medical history updated successfully", medicalHistory: user.medicalHistory });
+  } catch (err) {
+    console.error('Error updating medical history:', err);
+    res.status(500).json({ message: "Unable to update medical history", error: err.message });
   }
 };

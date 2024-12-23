@@ -4,12 +4,10 @@ const UserRouter = express.Router();
 const { authMiddleware, IsAdmin } = require('../auth/authMiddleware');
 
 
+
+UserRouter.get('/me', authMiddleware, UserController.findOne);           // Specific route for the logged-in user
+
 UserRouter.get('/', UserController.findAll);
-
-// UserRouter.get('/:id', UserController.findOne);
-UserRouter.post('/', UserController.create);
-
-UserRouter.post('/', IsAdmin ,UserController.create)
 
 UserRouter.get('/email/:id', UserController.findOneEmail);
 
@@ -17,20 +15,28 @@ UserRouter.get('/name/:id', UserController.findOneName);
 
 UserRouter.get('/id/:email', UserController.findOneId);
 
-UserRouter.get('/', authMiddleware, UserController.findOne);
+UserRouter.get('/trainers', authMiddleware, UserController.getAllTrainers); // Specific route for fetching trainers
 
-UserRouter.get('/me', authMiddleware, UserController.findOne);
+UserRouter.get('/:id', authMiddleware, UserController.findOneId);          // Dynamic route for fetching a user by ID
 
-UserRouter.delete('/:id', authMiddleware, UserController.delete);
+UserRouter.post('/', authMiddleware, IsAdmin, UserController.create);
+
+UserRouter.post('/', UserController.create);
+
+
+UserRouter.delete('/:id', IsAdmin, authMiddleware, UserController.delete);
 
 // Route for users to update their own profile
 UserRouter.put('/', authMiddleware, UserController.update);
 
 // Route for admins to update other users' profiles
-UserRouter.put('/:id', authMiddleware, UserController.update);
+UserRouter.put('/:id', authMiddleware, IsAdmin, UserController.update);
 
+UserRouter.post('/:id/session-notes', authMiddleware, UserController.addOrUpdateSessionNotes);
 
-UserRouter.get('/trainers', UserController.getAllTrainers);
+UserRouter.post('/:id/user-preferences', authMiddleware, UserController.addOrUpdatePreferences);
+
+UserRouter.post('/:id/medical-history', authMiddleware, UserController.addOrUpdateMedicalHistory);
 
 
 module.exports = { UserRouter };

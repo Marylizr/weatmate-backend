@@ -49,7 +49,7 @@ exports.create = async (req, res) => {
 
     // Validate payload
     payload.forEach((mealPlans, index) => {
-      if (!mealPlans.userName || !mealPlans.infotype || !mealPlans.content || !mealPlans.subCategory) {
+      if (!mealPlans.name || !mealPlans.infotype || !mealPlans.content || !mealPlans.subCategory) {
         console.log(`MealPlan at index ${index} is missing required fields:`, mealPlans);
         throw new Error(`mealPlan at index ${index} is invalid.`);
       }
@@ -59,7 +59,7 @@ exports.create = async (req, res) => {
     const newMealPlans = [];
     for (const mealPlans of payload) {
       const exists = await MealPlan.findOne({
-        userName: mealPlans.userName,
+        name: mealPlans.name,
         infotype: mealPlans.infotype,
         content: mealPlans.content,
         subCategory: mealPlans.subCategory,
@@ -71,7 +71,7 @@ exports.create = async (req, res) => {
       }
 
       const newMealPlan = new MealPlan({
-        userName: mealPlans.userName,
+        name: mealPlans.name,
         infotype: mealPlans.infotype,
         content: mealPlans.content,
         date: mealPlans.date || new Date(),

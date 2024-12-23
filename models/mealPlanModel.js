@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const MealPlanSchema = new Schema({
-  userName: {
+  name: {
     type: String,
     required: true, // Ensure userName is mandatory
     trim: true,

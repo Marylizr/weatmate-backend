@@ -13,6 +13,6 @@ exports.login = async (req, res) => {
   if (!checkPassword) return res.status(400).send("Password does not match");
 
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {expiresIn: '1h' });
-  res.status(200).json({ token: token, id: user._id, role: user.role, userName:user.name });
+  res.status(200).json({ token: token, id: user._id, role: user.role, name:user.name });
 };
 

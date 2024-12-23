@@ -20,7 +20,7 @@ const UserSchema = new Schema({
   age: {
     type: Number,
     required: [true, 'Age is required'],
-    min: [18, 'You must be at least 18 years old'],
+    min: [15, 'You must be at least 15 years old'],
   },
   height: {
     type: Number,
@@ -51,6 +51,22 @@ const UserSchema = new Schema({
     type: String,
     enum:["beginner", "medium", "advanced"]
   },
+  medicalHistory: {
+    type: String, // To store text data
+  },
+  medicalHistoryFile: {
+    type: String, // To store file URL if a document is uploaded
+  },
+  preferences: {
+    type: String, // Text area for user preferences
+  },
+  sessionNotes: [
+    {
+      note: { type: String, required: true },
+      date: { type: Date, default: Date.now },
+    },
+  ],
+
   // Admin-specific fields
   degree: {
     type: String,
