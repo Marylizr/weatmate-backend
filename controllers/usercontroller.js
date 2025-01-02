@@ -231,77 +231,141 @@ exports.update = async (req, res) => {
   }
 };
 
-exports.addOrUpdateSessionNotes = async (req, res) => {
-  const { id } = req.params;
-  const { session_notes } = req.body;
+
+exports.addSessionNote = async (req, res) => {
+  console.log('Request Params:', req.params); // Should log the user ID
+  console.log('Request Headers:', req.headers); // Should include Content-Type: application/json
+  console.log('Request Body:', req.body); // Should contain { note, date }
+
+  const { note, date } = req.body;
+
+  if (!note || !date) {
+    console.log('Validation failed:', { note, date });
+    return res.status(400).json({ message: 'Note and date are required.' });
+  }
 
   try {
-    const user = await User.findById(id);
+    const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: 'User not found.' });
     }
 
-    // Validate that each entry in session_notes is an object with a 'note' key
-    if (!Array.isArray(session_notes) || !session_notes.every(note => typeof note.note === 'string')) {
-      return res.status(400).json({ message: "Invalid session notes format" });
-    }
-
-    user.sessionNotes = session_notes;
+    user.sessionNotes.push({ note, date });
     await user.save();
+    res.status(201).json({ message: 'Session note added successfully.', sessionNotes: user.sessionNotes });
+  } catch (error) {
+    console.error('Error adding session note:', error);
+    res.status(500).json({ message: 'Error adding session note.', error: error.message });
+  }
+};
 
-    res.status(200).json({ message: "Session notes updated successfully", sessionNotes: user.sessionNotes });
-  } catch (err) {
-    console.error('Error updating session notes:', err);
-    res.status(500).json({ message: "Unable to update session notes", error: err.message });
+
+
+exports.getSessionNotes = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const user = await User.findById(id).select('sessionNotes');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    res.status(200).json(user.sessionNotes);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching session notes.', error: error.message });
+  }
+};
+
+
+
+// Controller to handle medical history
+exports.addMedicalHistory = async (req, res) => {
+  console.log('Request Params:', req.params); // Should log the user ID
+  console.log('Request Headers:', req.headers); // Should include Content-Type: application/json
+  console.log('Incoming Request Body:', req.body); // Should contain { history, date }
+
+  const { history, date } = req.body;
+
+  if (!history || !date) {
+    console.log('Validation failed:', { history, date });
+    return res.status(400).json({ message: 'History and date are required.' });
+  }
+
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    user.medicalHistory.push({ history, date });
+    await user.save();
+    res.status(201).json({ message: 'Medical record added successfully.', medicalHistory: user.medicalHistory });
+  } catch (error) {
+    console.error('Error adding medical record:', error);
+    res.status(500).json({ message: 'Error adding medical record.', error: error.message });
+  }
+};
+
+
+
+
+exports.getMedicalHistory = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const user = await User.findById(id).select('medicalHistory');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    res.status(200).json(user.medicalHistory);
+  } catch (error) {
+    console.error('Error fetching medical history:', error);
+    res.status(500).json({ message: 'Error fetching medical history.', error: error.message });
   }
 };
 
 
 // Add or Update User Preferences
-exports.addOrUpdatePreferences = async (req, res) => {
-  const { id } = req.params;
-  const { preferences } = req.body;
+exports.addUserPreference = async (req, res) => {
+  console.log('Request Params:', req.params); // Logs the user ID
+  console.log('Request Headers:', req.headers); // Logs request headers
+  console.log('Request Body:', req.body); // Logs parsed body
+
+  const { preference, date } = req.body;
+
+  if (!preference || !date) {
+    console.log('Validation failed:', { preference, date });
+    return res.status(400).json({ message: 'Preference and date are required.' });
+  }
 
   try {
-    // Find the user by ID
-    const user = await User.findById(id);
+    const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: 'User not found.' });
     }
 
-    // Update preferences
-    user.preferences = preferences;
+    user.preferences.push({ preference, date });
     await user.save();
-
-    res.status(200).json({ message: "User preferences updated successfully", preferences: user.preferences });
-  } catch (err) {
-    console.error('Error updating user preferences:', err);
-    res.status(500).json({ message: "Unable to update user preferences", error: err.message });
+    res.status(201).json({ message: 'Preference added successfully.', preferences: user.preferences });
+  } catch (error) {
+    console.error('Error adding user preference:', error);
+    res.status(500).json({ message: 'Error adding user preference.', error: error.message });
   }
 };
 
-
-// Add or update user's medical history
-exports.addOrUpdateMedicalHistory = async (req, res) => {
+exports.getUserPreferences = async (req, res) => {
   const { id } = req.params;
-  const { medicalHistory } = req.body;
 
   try {
-    // Find the user by ID
-    const user = await User.findById(id);
+    const user = await User.findById(id).select('preferences');
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: 'User not found.' });
     }
 
-    // Update the user's medical history
-    user.medicalHistory = medicalHistory;
-
-    // Save the updated user document
-    await user.save();
-
-    res.status(200).json({ message: "Medical history updated successfully", medicalHistory: user.medicalHistory });
-  } catch (err) {
-    console.error('Error updating medical history:', err);
-    res.status(500).json({ message: "Unable to update medical history", error: err.message });
+    res.status(200).json(user.preferences);
+  } catch (error) {
+    console.error('Error fetching medical history:', error);
+    res.status(500).json({ message: 'Error fetching medical history.', error: error.message });
   }
 };

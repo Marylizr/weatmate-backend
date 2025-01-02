@@ -6,8 +6,8 @@ const sendEmail = require('../emailService'); // Assuming an email service is av
 exports.findAll = async (req, res) => {
   try {
     const events = await Event.find()
-      .populate('userId', 'name email image') // Ensure 'email' is included here
-      .populate('trainerId', 'name email'); 
+      .populate('userId', 'name email') // Populate user info (name, email)
+      .populate('trainerId', 'name email'); // Populate trainer info
 
     res.status(200).json(events);
   } catch (error) {
@@ -15,14 +15,13 @@ exports.findAll = async (req, res) => {
   }
 };
 
-
 // Find a specific event by ID with populated user and trainer details
 exports.findOne = async (req, res) => {
   const eventId = req.params.id;
   try {
     const event = await Event.findById(eventId)
-      .populate('userId', 'name email image')
-      .populate('trainerId', 'name email');
+      .populate('userId', 'name email') // Populate user info (name, email)
+      .populate('trainerId', 'name email'); // Populate trainer info
 
     if (!event) {
       return res.status(404).json({ message: "Event not found" });
@@ -34,7 +33,6 @@ exports.findOne = async (req, res) => {
   }
 };
 
-// Create a new event
 exports.create = async (req, res) => {
   const { eventType, title, date, duration, userId, customerEmail, location, description, trainerOnly } = req.body;
   const trainerId = req.trainer._id; // Get the trainer ID from the authenticated request
@@ -50,7 +48,7 @@ exports.create = async (req, res) => {
       date,
       duration,
       trainerId,
-      userId: userId || null,
+      userId: userId[0] || null, // Store only the first user ID if an array is provided
       customerEmail: customerEmail || null,
       location,
       description,
@@ -66,6 +64,10 @@ exports.create = async (req, res) => {
     res.status(500).json({ message: "Unable to create event", error: error.message });
   }
 };
+
+
+
+
 
 // Confirm an event and send a confirmation email
 exports.confirmEvent = async (req, res) => {

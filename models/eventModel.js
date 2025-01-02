@@ -24,11 +24,13 @@ const EventSchema = new Schema({
     ref: 'User', // Reference to the User model
     required: true
   },
-  userId: {
-    type: Schema.Types.ObjectId,
-    ref: 'User', // Reference to the User model
-    required: false // Optional, can be null for trainer-only events
-  },
+  userId: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: 'User', // Ensure this points to the User model
+    },
+  ],
+
   customerEmail: {
     type: String, // To store the customer's email for sending confirmations
     required: false

@@ -1,32 +1,41 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const bodyParser = require('body-parser');
-const jwt = require('jsonwebtoken');
-const path = require('path')
-const User = require('./models/userModel')
 const cors = require('cors');
 const appRouter = require('./router');
 require('dotenv').config();
-const mongo = require('./mongo/index');
+const connectToDatabase = require('./mongo/index'); // Import the setup function
 const app = express();
-const port = process.env.PORT;
+const port = process.env.PORT || 3001;
+
+connectToDatabase(); // Call the function to connect to MongoDB
 
 
+// Middleware to parse JSON
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+
+// Enable CORS for all origins
 app.use(cors({
-  origin: '*',
+  origin: '*', // Adjust as needed for security in production
   optionsSuccessStatus: 200
 }));
 
 
- app.use(bodyParser.json());
- app.use(express.urlencoded({ extended:false }))
- 
- mongoose.set('strictQuery', true);
 
-const server = app.listen(port, () => {
-  console.log(`SweatMate listening at http://localhost:${port}`)
+// Set Mongoose strict mode (optional)
+mongoose.set('strictQuery', true);
+
+
+
+// Define routes
+app.use("/", appRouter);
+app.use((req, res, next) => {
+  console.log('Raw Request Body:', req.body);
+  next();
 });
 
-app.use("/", appRouter);
-
-
+// Start the server
+app.listen(port, () => {
+  console.log(`SweatMate listening at http://localhost:${port}`);
+});

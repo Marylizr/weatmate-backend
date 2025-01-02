@@ -12,6 +12,15 @@ const UserSchema = new Schema({
     unique: true,
     match: [/^\S+@\S+\.\S+$/, 'Invalid email format'],
   },
+  isVerified: { 
+    type: Boolean, 
+    default: false 
+  }, // Email verification status
+
+  emailToken: { 
+    type: String 
+  }, // Token for email confirmation
+  
   password: {
     type: String,
     required: [true, 'Password is required'],
@@ -37,9 +46,9 @@ const UserSchema = new Schema({
     required: [true, 'Goal is required'],
   },
   role: {
-   type: String,
-   default: 'basic',
-   enum: ["basic", "admin", "personal-trainer"] 
+    type: String,
+    default: 'basic',
+    enum: ["basic", "admin", "personal-trainer"], 
   },
   token: String,
   gender: {
@@ -49,17 +58,23 @@ const UserSchema = new Schema({
   },
   fitness_level: {
     type: String,
-    enum:["beginner", "medium", "advanced"]
+    enum:["beginner", "intermediate", "advanced"]
   },
-  medicalHistory: {
-    type: String, // To store text data
-  },
-  medicalHistoryFile: {
-    type: String, // To store file URL if a document is uploaded
-  },
-  preferences: {
-    type: String, // Text area for user preferences
-  },
+
+  medicalHistory: [
+    {
+      history: { type: String, required: true },
+      date: { type: Date, default: Date.now },
+    },
+  ],
+  
+  preferences: [
+    {
+      preference: { type: String, required: true },
+      date: { type: Date, default: Date.now },
+    },
+  ],
+
   sessionNotes: [
     {
       note: { type: String, required: true },
@@ -67,7 +82,13 @@ const UserSchema = new Schema({
     },
   ],
 
-  // Admin-specific fields
+  // Reference to the personal trainer
+  trainerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User', // Refers to the User model
+  },
+
+  // Admin / personal trainer -specific fields
   degree: {
     type: String,
   },

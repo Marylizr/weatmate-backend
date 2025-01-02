@@ -5,6 +5,8 @@ const { authMiddleware, IsAdmin } = require('../auth/authMiddleware');
 
 
 
+
+
 UserRouter.get('/me', authMiddleware, UserController.findOne);           // Specific route for the logged-in user
 
 UserRouter.get('/', UserController.findAll);
@@ -32,11 +34,24 @@ UserRouter.put('/', authMiddleware, UserController.update);
 // Route for admins to update other users' profiles
 UserRouter.put('/:id', authMiddleware, IsAdmin, UserController.update);
 
-UserRouter.post('/:id/session-notes', authMiddleware, UserController.addOrUpdateSessionNotes);
+// UserRouter.post('/:id/session-notes', authMiddleware, UserController.addOrUpdateSessionNotes);
 
-UserRouter.post('/:id/user-preferences', authMiddleware, UserController.addOrUpdatePreferences);
 
-UserRouter.post('/:id/medical-history', authMiddleware, UserController.addOrUpdateMedicalHistory);
+// Add session note
+UserRouter.post('/:id/session-notes', UserController.addSessionNote);
+
+// Get session notes
+UserRouter.get('/:id/session-notes', UserController.getSessionNotes);
+
+UserRouter.get('/:id/user-preferences', UserController.getUserPreferences);
+
+UserRouter.post('/:id/user-preferences', authMiddleware, UserController.addUserPreference);
+
+// Route to add a medical history entry
+UserRouter.post('/:id/medical-history', UserController.addMedicalHistory);
+
+// Route to fetch medical history
+UserRouter.get('/:id/medical-history', UserController.getMedicalHistory);
 
 
 module.exports = { UserRouter };
