@@ -1,57 +1,82 @@
-const express = require('express');
 const Fav = require('../models/favModel');
 
-
-exports.findAll = async (req, res) =>{
-   res.status(200).json(await Fav.find());
+// Fetch all favorite workouts
+exports.findAll = async (req, res) => {
+  try {
+    const favs = await Fav.find();
+    if (favs.length === 0) {
+      return res.status(200).json({ message: "No workouts found", data: favs });
+    }
+    res.status(200).json({ status: "success", data: favs });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
 };
 
-exports.delete = (req,res) => { 
-const id = req.params.id;
-Fav.findByIdAndDelete(id, {}, (error, result) => {
-   if(error){
-      res.status(500).json({error: error.message});
-   } else if(!result){
-      res.status(404);
-   }else{
-      res.status(204).send();
-   }
-})
-};
-
+// Fetch a single workout by ID
 exports.findOne = async (req, res) => {
-   res.status(200).json(await Fav.findOne(req.params.name));
-}
-
-
-exports.create = async (req, res) => {
-const data = req.body;
-const dataPosted = {
-   name:data.name,
-   type: data.type,
-   workoutName: data.workoutName,
-   description: data.description,
-   reps: data.reps,
-   lifted: data.lifted,
-   date: data.date,
-   series: data.series,
-   picture: data.picture,
-   video: data.video
-}
-
-const newFav = new Fav(dataPosted);
-
-await newFav.save()
-console.log(newFav, 'Your new FAV Workout has been created')
-res.json({Message: "Your new fav workout was created Succesfully", newFav});
+  try {
+    const fav = await Fav.findById(req.params.id);
+    if (!fav) {
+      return res.status(404).json({ message: "Workout not found" });
+    }
+    res.status(200).json({ status: "success", data: fav });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
 };
 
+// Create a new favorite workout
+exports.create = async (req, res) => {
+  const data = req.body;
+  try {
+    const existingFav = await Fav.findOne({ name: data.name });
+    if (existingFav) {
+      return res.status(409).json({ message: "Workout already exists" });
+    }
 
-exports.update = async(req, res) => {
-const id = req.params.id;
-const data = req.body;
+    const newFav = new Fav(data);
+    await newFav.save();
+    res.status(201).json({
+      status: "success",
+      message: "Your new favorite workout was created successfully",
+      data: newFav,
+    });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+};
 
-const updatedWorkout = await Fav.findOneAndUpdate(id, data)
+// Update an existing workout by ID
+exports.update = async (req, res) => {
+  try {
+    const updatedWorkout = await Fav.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!updatedWorkout) {
+      return res.status(404).json({ message: "Workout not found" });
+    }
+    res.status(200).json({
+      status: "success",
+      message: "Your favorite workout has been updated successfully",
+      data: updatedWorkout,
+    });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+};
 
-res.status(200).json({message: "Your Favs has been updated Succesfully", updatedWorkout})
-}
+// Delete a workout by ID
+exports.delete = async (req, res) => {
+  try {
+    const result = await Fav.findByIdAndDelete(req.params.id);
+    if (!result) {
+      return res.status(404).json({ message: "Workout not found" });
+    }
+    res.status(204).send(); // No content
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+};

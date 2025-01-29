@@ -21,14 +21,6 @@ const MoodTrackerSchema = new mongoose.Schema({
     default: Date.now,
   },
   suggestions: {
-    workout: {
-      type: String,
-      default: '',
-    },
-    playlist: {
-      type: String,
-      default: '',
-    },
     motivationalMessage: {
       type: String,
       default: '',

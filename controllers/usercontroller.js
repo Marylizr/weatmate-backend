@@ -1,7 +1,23 @@
+require('dotenv').config();
 const User = require('../models/userModel');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require("express-validator");
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+const { google } = require('googleapis');
+const mongoose = require("mongoose");
+
+
+exports.generateToken = (userId) => {
+  // Generate a JWT with the user ID
+  return jwt.sign(
+    { id: userId }, // Include the user ID in the payload
+    process.env.JWT_SECRET, // Secret from .env file
+    { expiresIn: "1h" } // Token expires in 1 hour
+  );
+};
+
 
 exports.findAll = async (req, res) => {
   try {
@@ -20,6 +36,8 @@ exports.getAllTrainers = async (req, res) => {
     res.status(500).json({ message: 'Unable to retrieve trainers', error: error.message });
   }
 };
+
+
 
 exports.findOneName = async (req, res) => {
   try {
@@ -49,22 +67,25 @@ exports.findOneId = async (req, res) => {
   try {
     const { id } = req.params;
 
-    if (id === 'me') {
+    if (id === "me") {
+      console.log("Session User for /me:", req.sessionUser);
       if (!req.sessionUser) {
         return res.status(404).json({ message: "User not found" });
       }
       return res.status(200).json(req.sessionUser);
     } else {
-      const user = await User.findById(id).select('-password');
+      const user = await User.findById(id).select("-password");
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
       return res.status(200).json(user);
     }
   } catch (err) {
+    console.error("Error retrieving user:", err.message);
     res.status(500).json({ message: "Unable to retrieve user", error: err.message });
   }
 };
+
 
 exports.findOne = async (req, res) => {
   try {
@@ -77,7 +98,149 @@ exports.findOne = async (req, res) => {
   }
 };
 
+//AUTH
+
+const oauth2Client = new google.auth.OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI
+);
+
+// Generate Google authorization URL
+const authUrl = oauth2Client.generateAuthUrl({
+  access_type: 'offline',
+  prompt: 'consent',
+  scope: ['https://www.googleapis.com/auth/gmail.send'],
+});
+console.log(`Authorize your app by visiting this URL: ${authUrl}`);
+
+// OAuth2 callback for exchanging authorization code
+exports.oauth2callback = async (req, res) => {
+  const { code } = req.query;
+
+  if (!code) {
+    return res.status(400).send('Authorization code not provided.');
+  }
+
+  try {
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+
+    if (tokens.refresh_token) {
+      process.env.OAUTH_REFRESH_TOKEN = tokens.refresh_token;
+    } else {
+      console.warn('No refresh token received. Ensure "prompt=consent" is used in authUrl.');
+    }
+
+    return res.status(200).send('Authorization successful! Tokens acquired.');
+  } catch (error) {
+    console.error('Error exchanging code for tokens:', error.message);
+    res.status(500).send('Failed to exchange code for tokens.');
+  }
+};
+
+// Create transporter with nodemailer
+async function createTransporter() {
+  try {
+    if (!process.env.OAUTH_REFRESH_TOKEN) {
+      throw new Error("Refresh token is missing. Reauthorize the app to obtain it.");
+    }
+
+    oauth2Client.setCredentials({
+      refresh_token: process.env.OAUTH_REFRESH_TOKEN,
+    });
+
+    const { token: accessToken } = await oauth2Client.getAccessToken();
+
+    return nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      secure: true,
+      service: 'gmail',
+      auth: {
+        user:process.env.GOOGLE_EMAIL_USER,
+        pass:process.env.GOOGLE_EMAIL_PASSWORD,
+        accessToken,
+      },
+    });
+  } catch (error) {
+    console.error("Error creating transporter:", error.message);
+    throw new Error("Failed to create transporter.");
+  }
+}
+
+
+
+// Confirm email verification
+exports.verifyEmail = async (req, res) => {
+  const { token } = req.query;
+
+  if (!token) {
+    return res.status(400).json({ success: false, message: "Token is required." });
+  }
+
+  try {
+    // Decode and verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("Decoded token:", decoded);
+
+    // Find the user by the decoded userId
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    // Check if the user is already verified
+    if (user.isVerified) {
+      return res.status(200).json({ success: true, message: "Email is already verified." });
+    }
+
+    // Update the user's verification status
+    user.isVerified = true;
+    await user.save();
+
+    return res.status(200).json({ success: true, message: "Email verified successfully!" });
+  } catch (error) {
+    console.error("Error verifying token:", error);
+
+    if (error.name === "TokenExpiredError") {
+      return res.status(400).json({
+        success: false,
+        message: "Verification link expired. Please request a new one.",
+      });
+    }
+
+    return res.status(400).json({ success: false, message: "Invalid or expired token." });
+  }
+};
+
+// Send verification email
+exports.sendVerificationEmail = async (user) => {
+  const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+  const verificationLink = `${process.env.BASE_URL}/verify-email?token=${token}`; // Ensure BASE_URL is correct
+
+  const mailOptions = {
+    from: process.env.GOOGLE_EMAIL_USER,
+    to: user.email,
+    subject: "Verify Your Email",
+    html: `
+      <p>Click the link below to verify your email address:</p>
+      <a href="${verificationLink}">${verificationLink}</a>
+    `,
+  };
+
+  try {
+    const transporter = await createTransporter(); // Ensure this is configured properly
+    await transporter.sendMail(mailOptions);
+    console.log(`Verification email sent to ${user.email}`);
+  } catch (error) {
+    console.error("Error sending verification email:", error.message);
+  }
+};
+
+
+
 // Create a new user
+
 exports.create = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -108,29 +271,31 @@ exports.create = async (req, res) => {
   } = req.body;
 
   try {
+    // Check for existing email
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({ message: "Email already in use" });
     }
 
+    // Validate trainerId
     if (trainerId) {
+      if (!mongoose.Types.ObjectId.isValid(trainerId)) {
+        return res.status(400).json({ message: "Invalid trainer ID format" });
+      }
       const trainer = await User.findById(trainerId);
       if (!trainer || trainer.role !== "personal-trainer") {
         return res.status(400).json({ message: "Invalid trainer ID" });
       }
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const passwordHashed = await bcrypt.hash(password, salt);
+    // Hash the password
+    const passwordHashed = await bcrypt.hash(password, 10);
 
+    // Role assignment
     const allowedRoles = ["basic", "admin", "personal-trainer"];
-    let assignedRole = allowedRoles.includes(role) ? role : "basic";
-
-    if (["admin", "personal-trainer"].includes(role)) {
-      if (!req.user || req.user.role !== "admin") {
-        return res.status(403).json({ message: "Unauthorized to assign this role" });
-      }
-      assignedRole = role;
+    const assignedRole = allowedRoles.includes(role) ? role : "basic";
+    if (["admin", "personal-trainer"].includes(role) && (!req.user || req.user.role !== "admin")) {
+      return res.status(403).json({ message: "Unauthorized to assign this role" });
     }
 
     const newUserData = {
@@ -149,32 +314,46 @@ exports.create = async (req, res) => {
       medicalHistoryFile,
       preferences,
       sessionNotes,
+      isVerified: assignedRole === "admin", // Auto-verify admin accounts
     };
 
+    // Add personal trainer-specific fields
     if (assignedRole === "personal-trainer") {
-      if (degree) newUserData.degree = degree;
-      if (experience) newUserData.experience = experience;
-      if (specializations) newUserData.specializations = specializations;
-      if (bio) newUserData.bio = bio;
-      if (location) newUserData.location = location;
+      newUserData.personalTrainerInfo = { name, email, degree, experience, specializations, bio, location };
     }
 
     const newUser = new User(newUserData);
-    const userSaved = await newUser.save();
+    await newUser.save();
 
-    const token = jwt.sign({ id: userSaved._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    // Send verification email if necessary
+    if (!newUser.isVerified) {
+      try {
+        await exports.sendVerificationEmail(newUser);
+      } catch (error) {
+        console.error("Failed to send verification email:", error.message);
+      }
+    }
 
-    return res.status(201).json({
+    // Generate JWT
+    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+
+    res.status(201).json({
       token,
-      id: userSaved._id,
-      role: userSaved.role,
-      name: userSaved.name,
+      id: newUser._id,
+      role: newUser.role,
+      name: newUser.name,
+      message: newUser.isVerified
+        ? "Admin account created successfully."
+        : "Account created successfully. Please verify your email to activate your account.",
     });
   } catch (err) {
-    console.error('Error creating user:', err);
+    console.error("Error creating user:", err);
     res.status(500).json({ message: "Unable to create user", error: err.message });
   }
 };
+
+
+
 
 exports.delete = async (req, res) => {
   try {
@@ -369,3 +548,57 @@ exports.getUserPreferences = async (req, res) => {
     res.status(500).json({ message: 'Error fetching medical history.', error: error.message });
   }
 };
+
+
+
+exports.registerUser = async (req, res) => {
+  const { name, email, password, role } = req.body;
+
+  try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ message: 'Email already in use.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const emailToken = crypto.randomBytes(32).toString('hex'); // Generate a unique token
+
+    const newUser = new User({
+      name,
+      email,
+      password: hashedPassword,
+      role,
+      emailToken,
+    });
+
+    await newUser.save();
+
+    // Send confirmation email
+    const transporter = nodemailer.createTransport({
+      service: 'gmail', // Adjust this based on your email provider
+      auth: {
+        user: process.env.EMAIL, // Your email address
+        pass: process.env.EMAIL_PASSWORD, // Your email password or app-specific password
+      },
+    });
+
+    const confirmationUrl = `${process.env.FRONTEND_URL}/confirm-email/${emailToken}`;
+    const mailOptions = {
+      from: process.env.EMAIL,
+      to: email,
+      subject: 'Email Confirmation',
+      text: `Please confirm your email by clicking the link: ${confirmationUrl}`,
+      html: `<p>Please confirm your email by clicking the link below:</p><a href="${confirmationUrl}">Confirm Email</a>`,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(201).json({
+      message: 'User registered successfully. Please confirm your email to activate your account.',
+    });
+  } catch (err) {
+    console.error('Error registering user:', err);
+    res.status(500).json({ message: 'Error registering user.', error: err.message });
+  }
+};
+

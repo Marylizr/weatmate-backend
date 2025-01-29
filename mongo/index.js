@@ -7,10 +7,10 @@ const connectToDatabase = async () => {
       throw new Error('DATABASE_URL is not defined in the environment variables.');
     }
 
-    await mongoose.connect(databaseURL, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    // Set Mongoose configurations before connecting
+    mongoose.set('strictQuery', true);
+
+    await mongoose.connect(databaseURL); // Options are no longer needed
 
     const mongo = mongoose.connection;
 
@@ -18,8 +18,6 @@ const connectToDatabase = async () => {
     mongo.once('open', () => {
       console.log('Connected to SweatMate database');
     });
-
-    mongoose.set('strictQuery', true);
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error.message);
     process.exit(1); // Exit the application if the connection fails
@@ -27,6 +25,3 @@ const connectToDatabase = async () => {
 };
 
 module.exports = connectToDatabase;
-
-
-

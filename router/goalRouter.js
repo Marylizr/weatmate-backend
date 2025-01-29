@@ -1,18 +1,22 @@
 const express = require('express');
 const GoalController = require('../controllers/GoalController');
 const authenticateTrainer = require('../auth/authenticateTrainer');
-const router = express.Router();
+const GoalRouter = express.Router();
 
 // Get all goals for a user
-router.get('/:id', GoalController.getUserGoals);
+GoalRouter.get('/', GoalController.getUserGoals);
 
 // Add a new goal
-router.post('/',  GoalController.createGoal);
+GoalRouter.post('/', authenticateTrainer, GoalController.createGoal);
 
 // Update a goal's progress
-router.put('/:goalId',  GoalController.updateGoalProgress);
+
+GoalRouter.put('/:goalId/milestones', authenticateTrainer, GoalController.updateGoalMilestone);
+GoalRouter.put('/:goalId/progress', authenticateTrainer, GoalController.updateGoalProgress);
+
+
 
 // Delete a goal
-router.delete('/:goalId', GoalController.deleteGoal);
+GoalRouter.delete('/:goalId', authenticateTrainer, GoalController.deleteGoal);
 
-module.exports = router;
+module.exports = GoalRouter;

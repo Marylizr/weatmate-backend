@@ -1,6 +1,6 @@
 const Event = require('../models/eventModel');
 const User = require('../models/userModel');
-const sendEmail = require('../emailService'); // Assuming an email service is available
+const sendEmail = require('../sendVerificationEmail'); // Assuming an email service is available
 
 // Get all events with populated user and trainer details
 exports.findAll = async (req, res) => {
