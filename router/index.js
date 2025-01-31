@@ -16,7 +16,8 @@ const { MealPlanRouter } = require('./mealPlanRouter');
 const { MoodTrackerRouter } = require('./moodTrackerRouter');
 const  GoalRouter  = require('./goalRouter');
 const   verifyEmailRouter  = require('./authRoutes');
-
+const menstrualCycleRouter = require('./menstrualCycleRouter');
+const  passwordRouter = require('./resetPasswordRouter');
 
 
 appRouter.use('/', LoginRouter);
@@ -34,6 +35,9 @@ appRouter.use('/mealPlan', MealPlanRouter);
 appRouter.use('/moodTracker', MoodTrackerRouter);
 appRouter.use('/goals', GoalRouter);
 appRouter.use('/auth', verifyEmailRouter);
+appRouter.use('/menstrualCycle', menstrualCycleRouter);
+appRouter.use('/', passwordRouter);
+
 
 
 // Debug middleware for incoming requests

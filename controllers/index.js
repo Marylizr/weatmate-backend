@@ -12,7 +12,8 @@ const PreWorkoutController = require('../controllers/preWorkoutController');
 const MealPlanController = require('../controllers/mealPlantController');
 const MoodTracker = require('../controllers/moodTrackerController');
 const verifyEmailController = require('../controllers/verifyEmailController');
-
+const MenstrualCycleController = require('../controllers/menstrualCycleController')
+const passwordController = require('../controllers/passwordController')
 
 
 module.exports = {
@@ -30,6 +31,8 @@ module.exports = {
   MealPlanController,
   MoodTracker,
   verifyEmailController,
+  MenstrualCycleController,
+  passwordController
  };  
  
  
