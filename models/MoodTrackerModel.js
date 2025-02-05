@@ -1,37 +1,29 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const MoodTrackerSchema = new mongoose.Schema({
-  name: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: "User",
     required: true,
   },
   mood: {
     type: String,
     required: true,
-    enum: ['Happy', 'Sad', 'Stressed', 'Anxious', 'Excited', 'Tired', 'Other'],
+    enum: ["Happy", "Sad", "Stressed", "Anxious", "Excited", "Tired", "Other"],
   },
   comments: {
     type: String,
-    default: '',
+    default: "",
   },
   date: {
     type: Date,
     required: true,
     default: Date.now,
   },
-  suggestions: {
-    motivationalMessage: {
-      type: String,
-      default: '',
-    },
-  },
-  menstrualCyclePhase: {
-    // Optional, only applicable for women
+  motivationalMessage: {
     type: String,
-    enum: ['Menstruation', 'Follicular', 'Ovulation', 'Luteal', 'Unknown'],
-    default: 'Unknown',
+    default: "",
   },
 });
 
-module.exports = mongoose.model('MoodTracker', MoodTrackerSchema);
+module.exports = mongoose.model("MoodTracker", MoodTrackerSchema);

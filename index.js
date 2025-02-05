@@ -19,18 +19,21 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 
 // Enable CORS for all origins
-app.use(cors({
-  origin: '*', 
-  optionsSuccessStatus: 200
-}));
+// Allow CORS from frontend
+const corsOptions = {
+  origin: "http://localhost:3000", // Change this to match your frontend URL
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true, // Allow cookies and authentication headers
+};
 
+app.use(cors(corsOptions));
+app.options("*", cors()); // Handle preflight requests
 
-app.use(cors({ origin: 'http://localhost:3000' })); // Allow requests from the frontend
 
 
 // Set Mongoose strict mode (optional)
 mongoose.set('strictQuery', true);
-
 
 
 // Define routes

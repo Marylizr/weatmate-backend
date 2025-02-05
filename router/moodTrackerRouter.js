@@ -15,4 +15,4 @@ MoodTrackerRouter.delete('/:id', MoodTrackerController.delete);
 MoodTrackerRouter.put('/', MoodTrackerController.update);
 
 
-module.exports = { MoodTrackerRouter }; 
+module.exports =  MoodTrackerRouter ; 

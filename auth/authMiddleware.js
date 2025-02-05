@@ -3,8 +3,10 @@ const User = require("../models/userModel"); // Ensure the User model path is co
 
 exports.authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
+  console.log("Received Authorization Header:", authHeader);
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    console.log("Authorization header missing or malformed");
     return res.status(401).json({ message: "Authorization header missing or malformed" });
   }
 
@@ -12,7 +14,7 @@ exports.authMiddleware = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("Decoded Token Data:", decoded);
+    console.log("Decoded Token:", decoded);
 
     const user = await User.findById(decoded.id);
     if (!user) {
@@ -20,12 +22,15 @@ exports.authMiddleware = async (req, res, next) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    console.log(`User Found: ${user.name} (${user.email})`);
-    req.user = user;
-    req.sessionUser = user; // Attach for findOneId
+    console.log(`Authenticated User: ${user.name} - Role: ${user.role}`);
+
+    req.user = user;  // Attach user to the request
+    req.sessionUser = user;  // For consistency
+    console.log("Middleware successfully attached user to request:", req.user);
+
     next();
   } catch (error) {
-    console.error("Token verification error:", error.message);
+    console.error("Token verification failed:", error.message);
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
@@ -35,16 +40,20 @@ exports.authMiddleware = async (req, res, next) => {
 
 
 exports.IsAdmin = (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Unauthorized. No user information found.' });
-    }
-  
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied. Admins only.' });
-    }
-  
-    next();
-  };
+  console.log("Checking Admin Role for User:", req.user ? req.user.role : "No user found");
+
+  if (!req.user) {
+    return res.status(401).json({ message: 'Unauthorized. No user information found.' });
+  }
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Access denied. Admins only.' });
+  }
+
+  console.log("User is an Admin. Proceeding...");
+  next();
+};
+
   
 
   exports.requireVerified = (req, res, next) => {

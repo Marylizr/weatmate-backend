@@ -5,8 +5,11 @@ const { authMiddleware, IsAdmin, requireVerified } = require('../auth/authMiddle
 
 
 
+// Create a new user (Admin Only)
+UserRouter.post('/', authMiddleware, IsAdmin, UserController.createUserByAdmin);
 
-UserRouter.post('/', UserController.create); // Public signup route
+UserRouter.post('/create-profile', UserController.create); // Public signup route
+
 UserRouter.get('/trainers', UserController.getAllTrainers); // Public route for fetching trainers
 // OAuth2 callback
 
@@ -32,8 +35,6 @@ UserRouter.get('/id/:email', authMiddleware, requireVerified, UserController.fin
 // Dynamic route for fetching a user by ID
 UserRouter.get('/:id', authMiddleware, requireVerified, UserController.findOneId);
 
-// Create a new user (Admin Only)
-UserRouter.post('/', authMiddleware, IsAdmin, UserController.create);
 
 
 // Delete a user (Admin Only)
@@ -60,3 +61,5 @@ UserRouter.post('/:id/medical-history', authMiddleware, requireVerified, UserCon
 UserRouter.get('/:id/medical-history', authMiddleware, requireVerified, UserController.getMedicalHistory);
 
 module.exports = { UserRouter };
+
+

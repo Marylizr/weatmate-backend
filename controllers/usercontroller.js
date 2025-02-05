@@ -88,15 +88,20 @@ exports.findOneId = async (req, res) => {
 
 
 exports.findOne = async (req, res) => {
-  try {
-    if (!req.sessionUser) {
-      return res.status(404).json({ message: "User not found" });
+
+    try {
+      const user = await User.findById(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
     }
-    res.status(200).json(req.sessionUser);
-  } catch (err) {
-    res.status(500).json({ message: "Unable to retrieve user", error: err.message });
-  }
-};
+  };
+  
+  
+
 
 //AUTH
 
@@ -112,7 +117,7 @@ const authUrl = oauth2Client.generateAuthUrl({
   prompt: 'consent',
   scope: ['https://www.googleapis.com/auth/gmail.send'],
 });
-console.log(`Authorize your app by visiting this URL: ${authUrl}`);
+
 
 // OAuth2 callback for exchanging authorization code
 exports.oauth2callback = async (req, res) => {
@@ -179,22 +184,21 @@ exports.verifyEmail = async (req, res) => {
   }
 
   try {
-    // Decode and verify the token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log("Decoded token:", decoded);
 
-    // Find the user by the decoded userId
+    // Ensure we use `_id` for MongoDB lookup
     const user = await User.findById(decoded.userId);
+    
     if (!user) {
+      console.error(`User not found for ID: ${decoded.userId}`);
       return res.status(404).json({ success: false, message: "User not found." });
     }
 
-    // Check if the user is already verified
     if (user.isVerified) {
       return res.status(200).json({ success: true, message: "Email is already verified." });
     }
 
-    // Update the user's verification status
     user.isVerified = true;
     await user.save();
 
@@ -213,10 +217,16 @@ exports.verifyEmail = async (req, res) => {
   }
 };
 
+
 // Send verification email
 exports.sendVerificationEmail = async (user) => {
+  if (!user.email) {
+    console.error("No email found for user:", user);
+    return false;
+  }
+
   const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
-  const verificationLink = `${process.env.BASE_URL}/verify-email?token=${token}`; // Ensure BASE_URL is correct
+  const verificationLink = `${process.env.BASE_URL}/verify-email?token=${token}`;
 
   const mailOptions = {
     from: process.env.GOOGLE_EMAIL_USER,
@@ -229,56 +239,68 @@ exports.sendVerificationEmail = async (user) => {
   };
 
   try {
-    const transporter = await createTransporter(); // Ensure this is configured properly
+    console.log("Creating email transporter...");
+    const transporter = await createTransporter();
     await transporter.sendMail(mailOptions);
-    console.log(`Verification email sent to ${user.email}`);
+    console.log("Verification email sent to:", user.email);
+    return true;
   } catch (error) {
     console.error("Error sending verification email:", error.message);
+    return false;
   }
 };
 
 
 
-// Create a new user
-
-exports.create = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const {
-    name,
-    email,
-    password,
-    age,
-    weight,
-    height,
-    goal,
-    role,
-    gender,
-    degree,
-    experience,
-    specializations,
-    bio,
-    location,
-    trainerId,
-    fitness_level,
-    medical_history,
-    medicalHistoryFile,
-    preferences,
-    sessionNotes,
-  } = req.body;
+//CREATE
+exports.createUserByAdmin = async (req, res) => {
+  console.log("Checking `req.user` inside `createUserByAdmin` function:", req.user);
 
   try {
-    // Check for existing email
+    if (!req.user || req.user.role !== "admin") {
+      console.log("Unauthorized: Only admins can create users.");
+      return res.status(403).json({ message: "Unauthorized: Only admins can create users." });
+    }
+
+    console.log("Incoming Request Body:", req.body);
+
+    const {
+      name,
+      email,
+      password,
+      age,
+      weight,
+      height,
+      goal,
+      role,
+      gender,
+      degree,
+      experience,
+      specializations,
+      bio,
+      location,
+      trainerId,
+      fitness_level,
+      medical_history,
+      medicalHistoryFile,
+      preferences,
+      sessionNotes,
+    } = req.body;
+
+    if (!password || typeof password !== "string" || password.trim().length < 8) {
+      console.log("Error: Invalid password input.");
+      return res.status(400).json({ message: "Password is required and must be at least 8 characters long." });
+    }
+
+    console.log("Checking for existing user with email:", email);
     const existingUser = await User.findOne({ email });
     if (existingUser) {
+      console.log("Email already exists:", email);
       return res.status(409).json({ message: "Email already in use" });
     }
 
-    // Validate trainerId
     if (trainerId) {
+      console.log("Validating Trainer ID:", trainerId);
       if (!mongoose.Types.ObjectId.isValid(trainerId)) {
         return res.status(400).json({ message: "Invalid trainer ID format" });
       }
@@ -288,16 +310,18 @@ exports.create = async (req, res) => {
       }
     }
 
-    // Hash the password
-    const passwordHashed = await bcrypt.hash(password, 10);
-
-    // Role assignment
+    console.log("Assigning Role...");
     const allowedRoles = ["basic", "admin", "personal-trainer"];
     const assignedRole = allowedRoles.includes(role) ? role : "basic";
-    if (["admin", "personal-trainer"].includes(role) && (!req.user || req.user.role !== "admin")) {
-      return res.status(403).json({ message: "Unauthorized to assign this role" });
-    }
 
+    // Automatically verify admins and personal trainers
+    const isVerified = assignedRole === "admin" || assignedRole === "personal-trainer";
+
+    console.log("Hashing Password...");
+    const passwordHashed = await bcrypt.hash(password.trim(), 10);
+    console.log("Password Hashed Successfully");
+
+    console.log("Preparing User Data...");
     const newUserData = {
       name,
       email,
@@ -314,17 +338,113 @@ exports.create = async (req, res) => {
       medicalHistoryFile,
       preferences,
       sessionNotes,
-      isVerified: assignedRole === "admin", // Auto-verify admin accounts
+      isVerified, // Automatically set verification for admins & trainers
     };
 
-    // Add personal trainer-specific fields
     if (assignedRole === "personal-trainer") {
       newUserData.personalTrainerInfo = { name, email, degree, experience, specializations, bio, location };
     }
 
+    console.log("Creating User in Database...");
     const newUser = new User(newUserData);
     await newUser.save();
+    console.log("User Successfully Created:", newUser);
 
+    console.log("Generating JWT Token...");
+    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    console.log("JWT Token Created Successfully:", token);
+
+    res.status(201).json({
+      token,
+      id: newUser._id,
+      role: newUser.role,
+      name: newUser.name,
+      message: isVerified
+        ? "Admin or Personal Trainer account created successfully."
+        : "Account created successfully. Please verify your email to activate your account.",
+    });
+  } catch (err) {
+    console.error("Error creating user:", err);
+    res.status(500).json({ message: "Unable to create user", error: err.message });
+  }
+};
+
+
+// Create a new user
+
+exports.create = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      password,
+      age,
+      weight,
+      height,
+      goal,
+      role,
+      gender,
+      trainerId,
+      fitness_level,
+    } = req.body;
+
+    if (!password || typeof password !== "string" || password.trim().length < 8) {
+      console.log("Error: Invalid password input.");
+      return res.status(400).json({ message: "Password is required and must be at least 8 characters long." });
+    }
+
+    console.log("Checking for existing user with email:", email);
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      console.log("Email already exists:", email);
+      return res.status(409).json({ message: "Email already in use" });
+    }
+
+    if (trainerId) {
+      console.log("Validating Trainer ID:", trainerId);
+      if (!mongoose.Types.ObjectId.isValid(trainerId)) {
+        return res.status(400).json({ message: "Invalid trainer ID format" });
+      }
+      const trainer = await User.findById(trainerId);
+      if (!trainer || trainer.role !== "personal-trainer") {
+        return res.status(400).json({ message: "Invalid trainer ID" });
+      }
+    }
+
+    console.log("Assigning Role...");
+    const allowedRoles = ["basic", "admin", "personal-trainer"];
+    const assignedRole = allowedRoles.includes(role) ? role : "basic";
+
+    console.log("Hashing Password...");
+    const passwordHashed = await bcrypt.hash(password.trim(), 10);
+    console.log("Password Hashed Successfully");
+
+    console.log("Preparing User Data...");
+    const newUserData = {
+      name,
+      email,
+      password: passwordHashed,
+      age,
+      weight,
+      height,
+      goal,
+      gender,
+      role: assignedRole,
+      trainerId,
+      fitness_level,
+      isVerified: false, // Ensure users need verification
+    };
+
+    console.log("Creating User in Database...");
+    const newUser = new User(newUserData);
+    await newUser.save();
+    console.log("User Successfully Created:", newUser);
+
+    console.log("Generating JWT Token...");
+    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    console.log("JWT Token Created Successfully:", token);
+
+    console.log("Sending Verification Email...");
     // Send verification email if necessary
     if (!newUser.isVerified) {
       try {
@@ -334,24 +454,18 @@ exports.create = async (req, res) => {
       }
     }
 
-    // Generate JWT
-    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
-
     res.status(201).json({
       token,
       id: newUser._id,
       role: newUser.role,
       name: newUser.name,
-      message: newUser.isVerified
-        ? "Admin account created successfully."
-        : "Account created successfully. Please verify your email to activate your account.",
+      message: "Account created successfully. Please verify your email to activate your account.",
     });
   } catch (err) {
     console.error("Error creating user:", err);
     res.status(500).json({ message: "Unable to create user", error: err.message });
   }
 };
-
 
 
 
@@ -367,14 +481,20 @@ exports.delete = async (req, res) => {
 
 // Update user profile
 exports.update = async (req, res) => {
-  const { id } = req.params;
-  const loggedInUser = req.sessionUser;
-
   try {
+    const { id } = req.params;
+    const loggedInUser = req.sessionUser;
+
+    console.log("Incoming Update Request:", req.body);
+
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({ message: "No update data provided" });
+    }
+
     let userToUpdate;
 
     if (id) {
-      if (loggedInUser.role !== "admin") {
+      if (!loggedInUser || loggedInUser.role !== "admin") {
         return res.status(403).json({ message: "Access denied. Only admins can update other users' profiles." });
       }
       userToUpdate = await User.findById(id);
@@ -404,11 +524,16 @@ exports.update = async (req, res) => {
 
     await userToUpdate.save();
 
+    console.log("User Updated Successfully:", userToUpdate);
+
     res.status(200).json({ message: "User has been updated successfully", updatedUser: userToUpdate });
   } catch (err) {
+    console.error("Error updating user:", err.message);
     res.status(500).json({ message: "Unable to update user", error: err.message });
   }
 };
+
+
 
 
 exports.addSessionNote = async (req, res) => {

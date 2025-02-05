@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 // Fetch all mood entries (optional: add pagination or filtering)
 exports.findAll = async (req, res) => {
   try {
-    const moods = await MoodTracker.find().populate('userName', 'name email'); // Populate user info if needed
+    const moods = await MoodTracker.find().populate('userId', 'name email'); // Populate user info if needed
     res.status(200).json(moods);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -48,7 +48,7 @@ exports.findOne = async (req, res) => {
 // Create a new mood entry
 exports.create = async (req, res) => {
   const {
-    name, // Should be the user's ID
+    userId, // Should be the user's ID
     mood,
     comments = '',
     date = new Date(),
@@ -57,19 +57,17 @@ exports.create = async (req, res) => {
   } = req.body;
 
   // Validate that userName is a valid ObjectId
-  if (!mongoose.Types.ObjectId.isValid(name)) {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
     return res.status(400).json({ error: "Invalid userName (must be a valid ObjectId)." });
   }
 
   try {
     const newMood = new MoodTracker({
-      name, // Should match the schema field name
+      userId, // Should match the schema field name
       mood,
       comments,
       date,
       suggestions: {
-        workout: suggestions.workout || '',
-        playlist: suggestions.playlist || '',
         motivationalMessage: suggestions.motivationalMessage || '',
       },
       menstrualCyclePhase,
