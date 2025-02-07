@@ -1,5 +1,5 @@
 const express = require('express');
-const eventController = require('../controllers/EventController');
+const eventController = require('../controllers/eventController');
 const authenticateTrainer = require('../auth/authenticateTrainer'); // Import the middleware
 const eventRouter = express.Router();
 

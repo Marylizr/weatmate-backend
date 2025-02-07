@@ -1,5 +1,5 @@
 const express = require('express');
-const  {saveWorkController}  = require('../controllers')
+const  saveWorkController = require('../controllers/saveWorkoutController')
 const saveWorkRouter = express.Router();
 
 

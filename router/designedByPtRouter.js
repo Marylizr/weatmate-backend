@@ -1,5 +1,5 @@
 const express = require('express');
-const  {designedByPtController}  = require('../controllers')
+const  designedByPtController  = require('../controllers/designedByPtController')
 const designedByPtRouter = express.Router();
 
 

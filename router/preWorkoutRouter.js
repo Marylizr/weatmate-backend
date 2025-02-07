@@ -1,5 +1,5 @@
 const express = require('express');
-const  {preWorkoutController } = require('../controllers')
+const preWorkoutController  = require('../controllers/preWorkoutController')
 const preWorkoutRouter = express.Router();
 
 
