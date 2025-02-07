@@ -51,11 +51,6 @@ appRouter.use((req, res, next) => {
    res.status(404).json({ message: 'Route not found' });
  });
 
- // Add this to handle the root URL
- appRouter.get('/', (req, res) => {
-  res.send('Welcome to SweatMate API!');
-});
-
  
 
 module.exports = appRouter;
