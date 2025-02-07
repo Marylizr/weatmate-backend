@@ -41,6 +41,8 @@ appRouter.use('/', passwordRouter);
 
 
 // Debug middleware for incoming requests
+
+
 appRouter.use((req, res, next) => {
    console.log(`Request received: ${req.method} ${req.url}`);
    next();
@@ -50,6 +52,7 @@ appRouter.use((req, res, next) => {
  appRouter.use((req, res) => {
    res.status(404).json({ message: 'Route not found' });
  });
+
 
  
 

@@ -47,6 +47,10 @@ app.get('/', (req, res) => {
 
 app.use("/", appRouter);
 
+appRouter.use('*', (req, res) => {
+  res.status(404).json({ message: 'Route not found' });
+});
+
 
 // Middleware to log raw request body
 app.use((req, res, next) => {
