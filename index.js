@@ -18,13 +18,14 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 
 
-// Enable CORS for all origins
-// Allow CORS from frontend
 const corsOptions = {
-  origin: "http://localhost:3000", // Change this to match your frontend URL
+  origin: [
+    "http://localhost:3000", 
+    "https://sweatmateapp.netlify.app" // Add your Netlify frontend URL
+  ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true, // Allow cookies and authentication headers
+  credentials: true, 
 };
 
 app.use(cors(corsOptions));
@@ -35,15 +36,16 @@ app.options("*", cors()); // Handle preflight requests
 // Set Mongoose strict mode (optional)
 mongoose.set('strictQuery', true);
 
-
 // Define routes
 app.use("/", appRouter);
+
+// Add this to handle the root URL
+app.get('/', (req, res) => {
+  res.send('Welcome to SweatMate API!');
+});
+
+// Middleware to log raw request body
 app.use((req, res, next) => {
   console.log('Raw Request Body:', req.body);
   next();
-});
-
-// Start the server
-app.listen(port, () => {
-  console.log(`SweatMate listening at http://localhost:${port}`);
 });
