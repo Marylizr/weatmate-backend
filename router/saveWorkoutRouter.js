@@ -1,20 +1,20 @@
 const express = require('express');
-const  {SaveWorkController}  = require('../controllers')
-const SaveWorkRouter = express.Router();
+const  {saveWorkController}  = require('../controllers')
+const saveWorkRouter = express.Router();
 
 
 
-SaveWorkRouter.get('/', SaveWorkController.findAll);
+saveWorkRouter.get('/', saveWorkController.findAll);
 
-SaveWorkRouter.get('/:id', SaveWorkController.findOne);
+saveWorkRouter.get('/:id', saveWorkController.findOne);
 
-SaveWorkRouter.post('/',  SaveWorkController.create)
+saveWorkRouter.post('/',  saveWorkController.create)
 
-SaveWorkRouter.delete('/:id', SaveWorkController.delete);
+saveWorkRouter.delete('/:id', saveWorkController.delete);
 
-SaveWorkRouter.patch('/', SaveWorkController.update);
+saveWorkRouter.patch('/', saveWorkController.update);
 
-SaveWorkRouter.put('/', SaveWorkController.update);
+saveWorkRouter.put('/', saveWorkController.update);
 
 
-module.exports = { SaveWorkRouter }; 
+module.exports =  saveWorkRouter ; 

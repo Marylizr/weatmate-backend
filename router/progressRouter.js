@@ -1,20 +1,20 @@
 const express = require('express');
-const { ProgressController } = require('../controllers');
-const ProgressRouter = express.Router();
+const {progressController } = require('../controllers');
+const progressRouter = express.Router();
 
 
 
-ProgressRouter.get('/', ProgressController.findAll);
+progressRouter.get('/', progressController.findAll);
 
-ProgressRouter.get('/:id', ProgressController.findOne);
+progressRouter.get('/:id', progressController.findOne);
 
-ProgressRouter.post('/',  ProgressController.create)
+progressRouter.post('/',  progressController.create)
 
-ProgressRouter.delete('/:id', ProgressController.delete);
+progressRouter.delete('/:id', progressController.delete);
 
-ProgressRouter.patch('/', ProgressController.update);
+progressRouter.patch('/', progressController.update);
 
-ProgressRouter.put('/', ProgressController.update);
+progressRouter.put('/', progressController.update);
 
 
-module.exports = { ProgressRouter };
+module.exports =  progressRouter ;

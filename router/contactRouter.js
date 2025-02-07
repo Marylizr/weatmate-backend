@@ -1,16 +1,16 @@
 const express = require('express');
-const  {MessageController}  = require('../controllers')
-const MessageRouter = express.Router();
+const  {contactController}  = require('../controllers')
+const contactRouter = express.Router();
 
 
 
-MessageRouter.get('/', MessageController.findAll);
+contactRouter.get('/', contactController.findAll);
 
-MessageRouter.get('/:id', MessageController.findOne);
+contactRouter.get('/:id', contactController.findOne);
 
-MessageRouter.post('/',  MessageController.create)
+contactRouter.post('/',  contactController.create)
 
-MessageRouter.delete('/:id', MessageController.delete);
+contactRouter.delete('/:id', contactController.delete);
 
 
-module.exports = { MessageRouter }; 
+module.exports = { contactRouter }; 

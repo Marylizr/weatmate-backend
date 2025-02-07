@@ -1,39 +1,39 @@
 const express = require('express');
 const appRouter = express.Router();
 
-const { UserRouter } = require('../router/userRouter');
-const LoginRouter  = require('../router/loginRouter');
-const {AddWorkoutRouter} = require('../router/addWorkoutRouter');
-const { SaveWorkRouter } = require ('../router/saveWorkoutRouter');
-const  FavRouter  = require('../router/favRouter');
-const {MessageRouter} = require('../router/contactRouter');
+const userRouter = require('../router/userRouter')
+const loginRouter  = require('../router/loginRouter');
+const {addWorkoutRouter} = require('../router/addWorkoutRouter');
+const saveWorkourRouter = require('../router/saveWorkoutRouter')
+const  favRouter  = require('../router/favRouter');
+const {contactRouter} = require('../router/contactRouter');
 const chatRouter = require('../router/chatRouter');
-const { ProgressRouter } = require('./progressRouter');
-const { DesignedByPtRouter }  = require('../router/designedByPtRouter');
-const { EventRouter }  = require('../router/eventRouter');
-const { PreWorkoutRouter } = require('./preWorkoutRouter');
-const { MealPlanRouter } = require('./mealPlanRouter');
-const  MoodTrackerRouter  = require('./moodTrackerRouter');
-const  GoalRouter  = require('./goalRouter');
+const progressRouter = require('../router/progressRouter')
+const { designedByPtRouter }  = require('../router/designedByPtRouter');
+const { eventRouter }  = require('../router/eventRouter');
+const  preWorkoutRouter = require('../router/preWorkoutRouter');
+const mealPlanRouter = require('../router/mealPlanRouter')
+const  moodTrackerRouter  = require('./moodTrackerRouter');
+const  goalRouter  = require('./goalRouter');
 const   verifyEmailRouter  = require('./authRoutes');
 const menstrualCycleRouter = require('./menstrualCycleRouter');
 const  passwordRouter = require('./resetPasswordRouter');
 
 
-appRouter.use('/', LoginRouter);
-appRouter.use('/workouts', AddWorkoutRouter);
-appRouter.use('/saveworkout', SaveWorkRouter);
-appRouter.use('/fav', FavRouter);
-appRouter.use('/user', UserRouter);
-appRouter.use('/contact', MessageRouter);
+appRouter.use('/', loginRouter);
+appRouter.use('/workouts', addWorkoutRouter);
+appRouter.use('/saveworkout', saveWorkourRouter);
+appRouter.use('/fav', favRouter);
+appRouter.use('/user', userRouter);
+appRouter.use('/contact', contactRouter);
 appRouter.use('/', chatRouter);
-appRouter.use('/progress', ProgressRouter);
-appRouter.use('/personaltrainer', DesignedByPtRouter);
-appRouter.use('/events', EventRouter);
-appRouter.use('/preWorkout', PreWorkoutRouter);
-appRouter.use('/mealPlan', MealPlanRouter);
-appRouter.use('/moodTracker', MoodTrackerRouter);
-appRouter.use('/goals', GoalRouter);
+appRouter.use('/progress', progressRouter);
+appRouter.use('/personaltrainer', designedByPtRouter);
+appRouter.use('/events', eventRouter);
+appRouter.use('/preWorkout', preWorkoutRouter);
+appRouter.use('/mealPlan', mealPlanRouter);
+appRouter.use('/moodTracker', moodTrackerRouter);
+appRouter.use('/goals', goalRouter);
 appRouter.use('/auth', verifyEmailRouter);
 appRouter.use('/menstrualCycle', menstrualCycleRouter);
 appRouter.use('/', passwordRouter);

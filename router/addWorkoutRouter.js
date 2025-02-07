@@ -1,20 +1,20 @@
 const express = require('express');
-const { AddWorkoutController } = require('../controllers')
-const AddWorkoutRouter = express.Router();
+const { addWorkoutController } = require('../controllers')
+const addWorkoutRouter = express.Router();
 
 
 
-AddWorkoutRouter.get('/', AddWorkoutController.findAll);
+addWorkoutRouter.get('/', addWorkoutController.findAll);
 
-AddWorkoutRouter.get('/:id', AddWorkoutController.findOne);
+addWorkoutRouter.get('/:id', addWorkoutController.findOne);
 
-AddWorkoutRouter.post('/',  AddWorkoutController.create)
+addWorkoutRouter.post('/',  addWorkoutController.create)
 
-AddWorkoutRouter.delete('/:id', AddWorkoutController.delete);
+addWorkoutRouter.delete('/:id', addWorkoutController.delete);
 
-AddWorkoutRouter.patch('/', AddWorkoutController.update);
+addWorkoutRouter.patch('/', addWorkoutController.update);
 
-AddWorkoutRouter.put('/',AddWorkoutController.update);
+addWorkoutRouter.put('/',addWorkoutController.update);
 
 
-module.exports = { AddWorkoutRouter };
+module.exports = { addWorkoutRouter };

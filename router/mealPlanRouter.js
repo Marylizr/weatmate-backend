@@ -1,18 +1,18 @@
 const express = require('express');
-const  {MealPlanController } = require('../controllers')
-const MealPlanRouter = express.Router();
+const  {mealPlanController } = require('../controllers')
+const mealPlanRouter = express.Router();
 
 
 
-MealPlanRouter.get('/', MealPlanController.findAll);
+mealPlanRouter.get('/', mealPlanController.findAll);
 
-MealPlanRouter.get('/:id', MealPlanController.getMealPlans);
+mealPlanRouter.get('/:id', mealPlanController.getMealPlans);
 
-MealPlanRouter.post('/',  MealPlanController.create)
+mealPlanRouter.post('/',  mealPlanController.create)
 
-MealPlanRouter.delete('/:id', MealPlanController.delete);
+mealPlanRouter.delete('/:id', mealPlanController.delete);
 
-MealPlanRouter.put('/', MealPlanController.update);
+mealPlanRouter.put('/', mealPlanController.update);
 
 
-module.exports = { MealPlanRouter }; 
+module.exports =  mealPlanRouter ; 

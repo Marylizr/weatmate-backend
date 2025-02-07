@@ -1,18 +1,18 @@
 const express = require('express');
-const  MoodTrackerController  = require('../controllers/moodTrackerController')
-const MoodTrackerRouter = express.Router();
+const  moodTrackerController  = require('../controllers/moodTrackerController')
+const moodTrackerRouter = express.Router();
 
 
 
-MoodTrackerRouter.get('/', MoodTrackerController.findAll);
+moodTrackerRouter.get('/', moodTrackerController.findAll);
 
-MoodTrackerRouter.get('/:id', MoodTrackerController.findOne);
+moodTrackerRouter.get('/:id', moodTrackerController.findOne);
 
-MoodTrackerRouter.post('/',  MoodTrackerController.create)
+moodTrackerRouter.post('/',  moodTrackerController.create)
 
-MoodTrackerRouter.delete('/:id', MoodTrackerController.delete);
+moodTrackerRouter.delete('/:id', moodTrackerController.delete);
 
-MoodTrackerRouter.put('/', MoodTrackerController.update);
+moodTrackerRouter.put('/', moodTrackerController.update);
 
 
-module.exports =  MoodTrackerRouter ; 
+module.exports =  moodTrackerRouter ; 

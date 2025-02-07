@@ -1,65 +1,65 @@
 const express = require('express');
-const { UserController } = require('../controllers');
-const UserRouter = express.Router();
+const { userController } = require('../controllers');
+const userRouter = express.Router();
 const { authMiddleware, IsAdmin, requireVerified } = require('../auth/authMiddleware');
 
 
 
 // Create a new user (Admin Only)
-UserRouter.post('/', authMiddleware, IsAdmin, UserController.createUserByAdmin);
+userRouter.post('/', authMiddleware, IsAdmin, userController.createUserByAdmin);
 
-UserRouter.post('/create-profile', UserController.create); // Public signup route
+userRouter.post('/create-profile', userController.create); // Public signup route
 
-UserRouter.get('/trainers', UserController.getAllTrainers); // Public route for fetching trainers
+userRouter.get('/trainers', userController.getAllTrainers); // Public route for fetching trainers
 // OAuth2 callback
 
 // Send verification email manually (optional)
-UserRouter.post('/send-verification', UserController.sendVerificationEmail);
+userRouter.post('/send-verification', userController.sendVerificationEmail);
 
 // Confirm email verification
-UserRouter.get('/verify-email', UserController.verifyEmail);
+userRouter.get('/verify-email', userController.verifyEmail);
 
 
 // Specific route for the logged-in user
-UserRouter.get('/me', authMiddleware, requireVerified, UserController.findOne);
+userRouter.get('/me', authMiddleware, requireVerified, userController.findOne);
    
 // Fetch all users (Admin Only)
-UserRouter.get('/', authMiddleware, IsAdmin, UserController.findAll);
+userRouter.get('/', authMiddleware, IsAdmin, userController.findAll);
 
 // Specific routes to fetch user data by different criteria
-UserRouter.get('/email/:id', authMiddleware, requireVerified, UserController.findOneEmail);
-UserRouter.get('/name/:id', authMiddleware, requireVerified, UserController.findOneName);
-UserRouter.get('/id/:email', authMiddleware, requireVerified, UserController.findOneEmail);
+userRouter.get('/email/:id', authMiddleware, requireVerified, userController.findOneEmail);
+userRouter.get('/name/:id', authMiddleware, requireVerified, userController.findOneName);
+userRouter.get('/id/:email', authMiddleware, requireVerified, userController.findOneEmail);
 
 
 // Dynamic route for fetching a user by ID
-UserRouter.get('/:id', authMiddleware, requireVerified, UserController.findOneId);
+userRouter.get('/:id', authMiddleware, requireVerified, userController.findOneId);
 
 
 
 // Delete a user (Admin Only)
-UserRouter.delete('/:id', authMiddleware, IsAdmin, UserController.delete);
+userRouter.delete('/:id', authMiddleware, IsAdmin, userController.delete);
 
 // Route for users to update their own profile
-UserRouter.put('/', authMiddleware, requireVerified, UserController.update);
+userRouter.put('/', authMiddleware, requireVerified, userController.update);
 
 // Route for admins to update other users' profiles
-UserRouter.put('/:id', authMiddleware, IsAdmin, UserController.update);
+userRouter.put('/:id', authMiddleware, IsAdmin, userController.update);
 
 // Add session note
-UserRouter.post('/:id/session-notes', authMiddleware, requireVerified, UserController.addSessionNote);
+userRouter.post('/:id/session-notes', authMiddleware, requireVerified, userController.addSessionNote);
 
 // Get session notes
-UserRouter.get('/:id/session-notes', authMiddleware, requireVerified, UserController.getSessionNotes);
+userRouter.get('/:id/session-notes', authMiddleware, requireVerified, userController.getSessionNotes);
 
 // Fetch and update user preferences
-UserRouter.get('/:id/user-preferences', authMiddleware, requireVerified, UserController.getUserPreferences);
-UserRouter.post('/:id/user-preferences', authMiddleware, requireVerified, UserController.addUserPreference);
+userRouter.get('/:id/user-preferences', authMiddleware, requireVerified, userController.getUserPreferences);
+userRouter.post('/:id/user-preferences', authMiddleware, requireVerified, userController.addUserPreference);
 
 // Add and fetch medical history
-UserRouter.post('/:id/medical-history', authMiddleware, requireVerified, UserController.addMedicalHistory);
-UserRouter.get('/:id/medical-history', authMiddleware, requireVerified, UserController.getMedicalHistory);
+userRouter.post('/:id/medical-history', authMiddleware, requireVerified, userController.addMedicalHistory);
+userRouter.get('/:id/medical-history', authMiddleware, requireVerified, userController.getMedicalHistory);
 
-module.exports = { UserRouter };
+module.exports =  userRouter ;
 
 

@@ -1,33 +1,33 @@
 const express = require('express');
-const EventController = require('../controllers/EventController');
+const eventController = require('../controllers/EventController');
 const authenticateTrainer = require('../auth/authenticateTrainer'); // Import the middleware
-const EventRouter = express.Router();
+const eventRouter = express.Router();
 
 // Get all events (this might not need authentication depending on your requirements)
-EventRouter.get('/', EventController.findAll);
+eventRouter.get('/', eventController.findAll);
 
 // Get one event by ID
-EventRouter.get('/:id', EventController.findOne);
+eventRouter.get('/:id', eventController.findOne);
 
 // Create a new event (only accessible to authenticated trainers)
-EventRouter.post('/', authenticateTrainer, EventController.create);
+eventRouter.post('/', authenticateTrainer, eventController.create);
 
 // Delete an event by ID (only accessible to authenticated trainers)
-EventRouter.delete('/:id', authenticateTrainer, EventController.delete);
+eventRouter.delete('/:id', authenticateTrainer, eventController.delete);
 
 // Update an event by ID (only accessible to authenticated trainers)
-EventRouter.put('/:id', authenticateTrainer, EventController.update);
+eventRouter.put('/:id', authenticateTrainer, eventController.update);
 
 // Update an event partially by ID (only accessible to authenticated trainers)
-EventRouter.patch('/:id', authenticateTrainer, EventController.update);
+eventRouter.patch('/:id', authenticateTrainer, eventController.update);
 
 // Confirm an event and send a confirmation email (only accessible to authenticated trainers)
-EventRouter.put('/:id/confirm', authenticateTrainer, EventController.confirmEvent);
+eventRouter.put('/:id/confirm', authenticateTrainer, eventController.confirmEvent);
 
 // Reschedule an event (only accessible to authenticated trainers)
-EventRouter.put('/:id/reschedule', authenticateTrainer, EventController.rescheduleEvent);
+eventRouter.put('/:id/reschedule', authenticateTrainer, eventController.rescheduleEvent);
 
 // Update event status (custom route to mark as completed or canceled)
-EventRouter.put('/:id/status', authenticateTrainer, EventController.updateEventStatus);
+eventRouter.put('/:id/status', authenticateTrainer, eventController.updateEventStatus);
 
-module.exports = { EventRouter };
+module.exports = { eventRouter };

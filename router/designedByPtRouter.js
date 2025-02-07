@@ -1,20 +1,20 @@
 const express = require('express');
-const  {DesignedByPtController}  = require('../controllers')
-const DesignedByPtRouter = express.Router();
+const  {designedByPtController}  = require('../controllers')
+const designedByPtRouter = express.Router();
 
 
 
-DesignedByPtRouter.get('/', DesignedByPtController.findAll);
+designedByPtRouter.get('/', designedByPtController.findAll);
 
-DesignedByPtRouter.get('/:id', DesignedByPtController.findOne);
+designedByPtRouter.get('/:id', designedByPtController.findOne);
 
-DesignedByPtRouter.post('/',  DesignedByPtController.create)
+designedByPtRouter.post('/',  designedByPtController.create)
 
-DesignedByPtRouter.delete('/:id', DesignedByPtController.delete);
+designedByPtRouter.delete('/:id', designedByPtController.delete);
 
-DesignedByPtRouter.patch('/', DesignedByPtController.update);
+designedByPtRouter.patch('/', designedByPtController.update);
 
-DesignedByPtRouter.put('/', DesignedByPtController.update);
+designedByPtRouter.put('/', designedByPtController.update);
 
 
-module.exports = { DesignedByPtRouter }; 
+module.exports = { designedByPtRouter }; 
