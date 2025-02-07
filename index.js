@@ -43,9 +43,13 @@ mongoose.set('strictQuery', true);
 // Define routes
 app.use("/", appRouter);
 
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'SweatMate Backend is Running!' });
+});
 
 // Middleware to log raw request body
 app.use((req, res, next) => {
   console.log('Raw Request Body:', req.body);
   next();
 });
+
