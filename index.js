@@ -1,45 +1,48 @@
 require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
-const appRouter = require('./router');
-const connectToDatabase = require('./mongo/index');
+const connectToDatabase = require('./mongo/index');  // Import the MongoDB connection
 
 const app = express();
-
-// This ensures Heroku provides the port. Remove any hardcoded defaults.
 const port = process.env.PORT;
+
+if (!port) {
+    console.error("PORT environment variable is not defined.");
+    process.exit(1); // Exit if PORT isn't set
+}
+
+
 
 // Connect to MongoDB
 connectToDatabase();
 
-// Middleware to parse JSON
+// Middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// CORS Setup
+// CORS Configuration
 const corsOptions = {
-  origin: [
-    "http://localhost:3000", 
-    "https://sweatmateapp.netlify.app"
-  ],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
+    origin: [
+        "http://localhost:3000", 
+        "https://sweatmateapp.netlify.app" // Add your Netlify frontend URL
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
 };
-
 app.use(cors(corsOptions));
-app.options("*", cors());
+app.options("*", cors());  // Handle preflight requests
 
-// Route Definitions
+// Routes
+const appRouter = require('./router');
 app.use("/", appRouter);
 
-// Health Check Route
+// Default Route to Confirm Server is Running
 app.get('/', (req, res) => {
-  res.status(200).json({ message: 'SweatMate Backend is Running!' });
+    res.status(200).json({ message: 'SweatMate Backend is Running!' });
 });
 
-// Start the server using process.env.PORT
+// Start Server
 app.listen(port, () => {
-  console.log(`SweatMate listening on port ${port}`);
+    console.log(`SweatMate listening on port ${port}`);
 });

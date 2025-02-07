@@ -14,9 +14,9 @@
   "author": "Mary Liz Ramirez",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Marylizr/befit-backend/issues"
+    "url": "https://github.com/Marylizr/weatmate-backend/issues"
   },
-  "homepage": "https://github.com/Marylizr/befit-backend#readme",
+  "homepage": "https://github.com/Marylizr/weatmate-backend#readme",
   "dependencies": {
     "accesscontrol": "^2.2.1",
     "axios": "^1.4.0",
@@ -33,10 +33,12 @@
     "mongoose": "^8.9.4",
     "nodemailer": "^6.9.16",
     "openai": "^3.3.0",
-    "react-calendar": "^4.6.0",
-    "start": "^5.1.0"
+    "react-calendar": "^4.6.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.20"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
