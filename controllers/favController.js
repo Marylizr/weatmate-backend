@@ -1,6 +1,6 @@
 const Fav = require('../models/favModel');
 
-// Fetch all favorite workouts
+
 exports.findAll = async (req, res) => {
   try {
     const favs = await Fav.find();

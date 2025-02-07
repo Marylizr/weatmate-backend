@@ -1,4 +1,3 @@
-// const db = require('./mongo');
 const Contact = require('../models/contactModel');
 const bcrypt = require('bcrypt');
 

@@ -1,4 +1,3 @@
-// const db = require('./mongo');
 const DesignedByPt = require('../models/designedByPtModel');
 
 
