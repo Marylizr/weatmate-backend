@@ -35,12 +35,13 @@ app.options("*", cors());  // Handle preflight requests
 
 // Routes
 const appRouter = require('./router');
-app.use("/", appRouter);
 
-// Default Route to Confirm Server is Running
 app.get('/', (req, res) => {
     res.status(200).json({ message: 'SweatMate Backend is Running!' });
 });
+app.use("/", appRouter);
+
+// Default Route to Confirm Server is Running
 
 // Start Server
 app.listen(port, () => {
