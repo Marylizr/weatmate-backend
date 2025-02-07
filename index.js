@@ -7,6 +7,7 @@ const connectToDatabase = require('./mongo/index'); // Import the setup function
 const app = express();
 const port = process.env.PORT || 3001;
 
+
 connectToDatabase(); // Call the function to connect to MongoDB
 
 
@@ -31,6 +32,9 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options("*", cors()); // Handle preflight requests
 
+app.listen(port, () => {
+  console.log(`SweatMate listening on port ${port}`);
+});
 
 
 // Set Mongoose strict mode (optional)
