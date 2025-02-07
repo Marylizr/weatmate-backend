@@ -31,3 +31,7 @@ app.use("/", appRouter);
 app.listen(port, () => {
   console.log(`SweatMate listening on port ${port}`);
 });
+
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'SweatMate Backend is Running!' });
+});
