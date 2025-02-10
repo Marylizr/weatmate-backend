@@ -1,37 +1,42 @@
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const User = require("../models/userModel"); // Adjust the path based on your structure
+const jwt = require('jsonwebtoken');
+const User = require('../models/User'); 
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(400).json({ message: "Invalid email or password" });
     }
 
-    // Compare passwords
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid password" });
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid email or password" });
     }
 
-    // Generate JWT
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    // Secure cookie setup for Netlify + Heroku
+    res.cookie('token', token, {
+      httpOnly: true,        // Prevents JS access to the cookie
+      secure: true,          // Only over HTTPS (required by Netlify)
+      sameSite: 'None',      // Needed for cross-origin requests between Netlify and Heroku
     });
 
-    // Return user session
-    return res.status(200).json({
-      token,
+    // Send session data (no token in response, it's in the cookie)
+    res.status(200).json({
       id: user._id,
       role: user.role,
-      name: user.name,
+      name: user.name
     });
+
   } catch (error) {
-    console.error("Error during login:", error.message);
-    return res.status(500).json({ message: "Login failed", error: error.message });
+    console.error("Login Error:", error);
+    res.status(500).json({ message: "Server error during login" });
   }
 };
