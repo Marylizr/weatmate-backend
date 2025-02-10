@@ -11,10 +11,8 @@ const connectToDatabase = async () => {
 
         mongoose.set("strictQuery", true);
 
-        await mongoose.connect(databaseURL, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
+       
+        await mongoose.connect(databaseURL);
 
         const db = mongoose.connection;
 
@@ -25,7 +23,7 @@ const connectToDatabase = async () => {
 
     } catch (error) {
         console.error("Failed to connect to MongoDB:", error.message);
-        process.exit(1);  // Exit the process if connection fails
+        process.exit(1); 
     }
 };
 

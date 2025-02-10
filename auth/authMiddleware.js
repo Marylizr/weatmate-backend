@@ -2,15 +2,21 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/userModel"); // Ensure the User model path is correct
 
 exports.authMiddleware = async (req, res, next) => {
+  // Check for token in Authorization header or cookies
   const authHeader = req.headers.authorization;
-  console.log("Received Authorization Header:", authHeader);
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    console.log("Authorization header missing or malformed");
-    return res.status(401).json({ message: "Authorization header missing or malformed" });
+  const tokenFromCookie = req.cookies.token;
+  
+  let token = null;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.split(" ")[1];
+  } else if (tokenFromCookie) {
+    token = tokenFromCookie;
   }
 
-  const token = authHeader.split(" ")[1];
+  if (!token) {
+    console.log("Authorization token missing or malformed");
+    return res.status(401).json({ message: "Authorization token missing or malformed" });
+  }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);

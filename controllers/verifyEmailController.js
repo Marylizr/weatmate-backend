@@ -42,3 +42,4 @@ exports.oauth2callback = async (req, res) => {
     res.status(500).send("Failed to exchange code for tokens.");
   }
 };
+

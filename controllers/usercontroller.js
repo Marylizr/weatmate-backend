@@ -88,17 +88,34 @@ exports.findOneId = async (req, res) => {
 
 
 exports.findOne = async (req, res) => {
-
-    try {
-      const user = await User.findById(req.user.id);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      res.json(user);
-    } catch (error) {
-      res.status(500).json({ message: "Server error" });
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
-  };
+
+    // Optional: Refresh token if needed
+    const refreshedToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+    res.cookie('token', refreshedToken, {
+      httpOnly: true,       // Prevent JavaScript access (more secure)
+      secure: true,         // Only send over HTTPS
+      sameSite: 'None',     // Required for cross-origin cookies
+    });
+
+    // Send user data back
+    res.json({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
+
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
   
   
 
