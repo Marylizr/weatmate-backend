@@ -1,11 +1,14 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel"); // Ensure the User model path is correct
 
+const jwt = require('jsonwebtoken');
+const User = require('../models/userModel'); // Ensure this path is correct
+
 exports.authMiddleware = async (req, res, next) => {
-  // Check for token in Authorization header or cookies
+  // Safely check for token in Authorization header or cookies
   const authHeader = req.headers.authorization;
-  const tokenFromCookie = req.cookies.token;
-  
+  const tokenFromCookie = req.cookies ? req.cookies.token : null;
+
   let token = null;
   if (authHeader && authHeader.startsWith("Bearer ")) {
     token = authHeader.split(" ")[1];

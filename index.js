@@ -2,9 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectToDatabase = require('./mongo/index');  // Import the MongoDB connection
-
 const app = express();
 const port = process.env.PORT;
+const cookieParser = require('cookie-parser');
 
 if (!port) {
     console.error("PORT environment variable is not defined.");
@@ -19,7 +19,8 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-
+// Middleware to parse cookies
+app.use(cookieParser());
 
 // Connect to MongoDB
 connectToDatabase();
