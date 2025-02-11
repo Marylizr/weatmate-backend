@@ -39,6 +39,7 @@ app.options("*", cors());  // Handle preflight requests
 
 // Routes
 const appRouter = require('./router');
+app.use('/', appRouter);
 
 app.get('/', (req, res) => {
     res.status(200).json({ message: 'SweatMate Backend is Running!' });
