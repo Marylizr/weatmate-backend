@@ -2,9 +2,6 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/userModel"); // Ensure the User model path is correct
 
 
-const jwt = require("jsonwebtoken");
-const User = require("../models/userModel");
-
 exports.authMiddleware = async (req, res, next) => {
   // Extract token from cookies first, then headers
   const tokenFromCookie = req.cookies?.token;

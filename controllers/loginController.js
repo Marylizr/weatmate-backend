@@ -16,23 +16,20 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
+    // Set the cookie
     res.cookie('token', token, {
-      httpOnly: true,                                      // Prevents JS access to the cookie (security)
-      secure: process.env.NODE_ENV === 'production',       // Ensures HTTPS in production, HTTP in development
-      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',  // Allows cross-origin in production
-      domain: process.env.NODE_ENV === 'production' ? '.netlify.app' : 'localhost',  // For Netlify in production
-      path: '/',                                           // Cookie valid for the entire site
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
+      domain: process.env.NODE_ENV === 'production' ? '.netlify.app' : 'localhost',
+      path: '/',
     });
-    
 
     console.log("Token sent in cookie:", token);
 
+    // Send only one response here
     res.status(200).json({
       token,
       id: user._id,
