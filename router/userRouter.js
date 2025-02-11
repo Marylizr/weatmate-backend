@@ -22,6 +22,7 @@ userRouter.get('/verify-email', userController.verifyEmail);
 
 // Specific route for the logged-in user
 userRouter.get('/me', authMiddleware, requireVerified, userController.findOne);
+
    
 // Fetch all users (Admin Only)
 userRouter.get('/', authMiddleware, IsAdmin, userController.findAll);

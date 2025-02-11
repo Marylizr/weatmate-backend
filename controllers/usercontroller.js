@@ -95,20 +95,23 @@ exports.findOne = async (req, res) => {
     }
 
     // Optional: Refresh token if needed
-    const refreshedToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-    res.cookie('token', refreshedToken, {
-      httpOnly: true,       // Prevent JavaScript access (more secure)
-      secure: true,         // Only send over HTTPS
-      sameSite: 'None',     // Required for cross-origin cookies
+    // Set the cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',  // Secure only in production
+      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',  // Allow cross-origin in production
     });
 
-    // Send user data back
-    res.json({
+    // Ensure the token is also in the response body
+    res.status(200).json({
+      token,  
       id: user._id,
-      name: user.name,
-      email: user.email,
       role: user.role,
+      name: user.name,
+      gender: user.gender,
+      message: "Login successful",
     });
 
   } catch (error) {
@@ -118,7 +121,6 @@ exports.findOne = async (req, res) => {
 };
   
   
-
 
 //AUTH
 
