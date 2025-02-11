@@ -97,13 +97,13 @@ exports.findOne = async (req, res) => {
     // Optional: Refresh token if needed
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-    // Set the cookie
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',  // Secure only in production
-      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',  // Allow cross-origin in production
+      secure: true,             // Always secure in production
+      sameSite: 'None',         // Always 'None' for cross-origin cookies
     });
-
+    
+ 
     // Ensure the token is also in the response body
     res.status(200).json({
       token,  
