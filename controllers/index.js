@@ -1,37 +1,37 @@
-const AddWorkoutController = require('../controllers/addWorkoutController');
-const FavController = require('../controllers/favController');
-const SaveWorkController = require('../controllers/saveWorkoutController');
-const MessageController = require('../controllers/contactController');
-const UserController =require('../controllers/usercontroller');
-const LoginController = require('../controllers/loginController');
+const addWorkoutController = require('../controllers/addWorkoutController');
+const favController = require('../controllers/favController');
+const saveWorkController = require('../controllers/saveWorkoutController');
+const messageController = require('../controllers/contactController');
+const userController =require('../controllers/usercontroller');
+const loginController = require('../controllers/loginController');
 const chatCompletion = require('../controllers/chatController');
-const ProgressController = require('../controllers/progressController');
-const DesignedByPtController = require('../controllers/designedByPtController');
-const EventController = require('../controllers/eventController');
-const PreWorkoutController = require('../controllers/preWorkoutController');
-const MealPlanController = require('../controllers/mealPlantController');
-const MoodTracker = require('../controllers/moodTrackerController');
+const progressController = require('../controllers/progressController');
+const designedByPtController = require('../controllers/designedByPtController');
+const eventController = require('../controllers/eventController');
+const preWorkoutController = require('../controllers/preWorkoutController');
+const mealPlanController = require('../controllers/mealPlantController');
+const moodTracker = require('../controllers/moodTrackerController');
 const verifyEmailController = require('../controllers/verifyEmailController');
-const MenstrualCycleController = require('../controllers/menstrualCycleController')
+const menstrualCycleController = require('../controllers/menstrualCycleController')
 const passwordController = require('../controllers/passwordController')
 
 
 module.exports = {
-  AddWorkoutController,
-  FavController,
-  SaveWorkController,
-  MessageController,
-  UserController,
-  LoginController,
+  addWorkoutController,
+  favController,
+  saveWorkController,
+  messageController,
+  userController,
+  loginController,
   chatCompletion,
-  ProgressController,
-  DesignedByPtController,
-  EventController,
-  PreWorkoutController,
-  MealPlanController,
-  MoodTracker,
+  progressController,
+  designedByPtController,
+  eventController,
+  preWorkoutController,
+  mealPlanController,
+  moodTracker,
   verifyEmailController,
-  MenstrualCycleController,
+  menstrualCycleController,
   passwordController
  };  
  

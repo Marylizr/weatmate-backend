@@ -259,7 +259,6 @@ exports.sendVerificationEmail = async (user) => {
 };
 
 
-
 //CREATE
 exports.createUserByAdmin = async (req, res) => {
   console.log("Checking `req.user` inside `createUserByAdmin` function:", req.user);

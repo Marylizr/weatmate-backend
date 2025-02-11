@@ -4,6 +4,8 @@ const userRouter = express.Router();
 const { authMiddleware, IsAdmin, requireVerified } = require('../auth/authMiddleware');
 
 
+// Specific route for the logged-in user
+userRouter.get('/me', authMiddleware, requireVerified, userController.findOne);
 
 // Create a new user (Admin Only)
 userRouter.post('/', authMiddleware, IsAdmin, userController.createUserByAdmin);
@@ -20,8 +22,6 @@ userRouter.post('/send-verification', userController.sendVerificationEmail);
 userRouter.get('/verify-email', userController.verifyEmail);
 
 
-// Specific route for the logged-in user
-userRouter.get('/me', authMiddleware, requireVerified, userController.findOne);
 
    
 // Fetch all users (Admin Only)
