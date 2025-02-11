@@ -40,6 +40,8 @@ exports.authMiddleware = async (req, res, next) => {
 };
 
 
+
+
 exports.IsAdmin = (req, res, next) => {
   console.log("Checking Admin Role for User:", req.user ? req.user.role : "No user found");
 
