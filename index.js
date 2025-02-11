@@ -33,7 +33,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 
 const corsOptions = {
-    origin: ['https://sweatmateapp.netlify.app'],
+     origin: process.env.BASE_URL || 'https://sweatmateapp.netlify.app',
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization'],
 };
@@ -47,10 +47,15 @@ app.get('/', (req, res) => {
     res.status(200).json({ message: 'SweatMate Backend is Running!' });
 });
 app.use("/", appRouter);
-app.use((req, res, next) => {
-    console.log(`Incoming request from: ${req.headers.origin}`);
-    next();
-  });
+if (process.env.NODE_ENV === 'production') {
+    app.use((req, res, next) => {
+        if (req.headers['x-forwarded-proto'] !== 'https') {
+            return res.redirect('https://' + req.headers.host + req.url);
+        }
+        next();
+    });
+}
+
   
 
 // Default Route to Confirm Server is Running

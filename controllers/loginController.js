@@ -3,7 +3,6 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 
 exports.login = async (req, res) => {
-
   try {
     const { email, password } = req.body;
 
@@ -23,39 +22,28 @@ exports.login = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    // Set the cookie
     res.cookie('token', token, {
-      httpOnly: true,
-      secure: true,  // Always true in production to ensure HTTPS
-      sameSite: 'None',  // Required for cross-origin cookies
+      httpOnly: true,                                      // Prevents JS access to the cookie (security)
+      secure: process.env.NODE_ENV === 'production',       // Ensures HTTPS in production, HTTP in development
+      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',  // Allows cross-origin in production
+      domain: process.env.NODE_ENV === 'production' ? '.netlify.app' : 'localhost',  // For Netlify in production
+      path: '/',                                           // Cookie valid for the entire site
     });
-    console.log("Token sent in cookie:", token);  // Check if the token is generated and sent
-    res.status(200).json({ message: "Login successful", token });
     
-    // Ensure the token is also in the response body
+
+    console.log("Token sent in cookie:", token);
+
     res.status(200).json({
-      token,  // <--- This is critical for the frontend
+      token,
       id: user._id,
       role: user.role,
       name: user.name,
       gender: user.gender,
       message: "Login successful",
     });
-    
+
   } catch (error) {
     console.error("Login Error:", error.message);
     res.status(500).json({ message: "Server error during login" });
   }
 };
-
-
-
- // Set the cookie
- res.cookie('token', token, {
-  httpOnly: true,
-  secure: true,  // Always true in production to ensure HTTPS
-  sameSite: 'None',  // Required for cross-origin cookies
-});
-console.log("Token sent in cookie:", token);  // Check if the token is generated and sent
-res.status(200).json({ message: "Login successful", token });
-

@@ -86,42 +86,41 @@ exports.findOneId = async (req, res) => {
   }
 };
 
-
 exports.findOne = async (req, res) => {
-      
-      try {
-        const user = await User.findOne({ email: req.body.email });
-    if (!user) {
-        console.log("User not found for email:", req.body.email);
-        return res.status(400).json({ message: "Invalid email or password" });
+  try {
+    // Extract the token from cookies
+    const token = req.cookies.token;
+
+    if (!token) {
+      console.log("No token provided in cookies.");
+      return res.status(401).json({ message: "Authorization token missing or malformed" });
     }
 
-    const isPasswordValid = await bcrypt.compare(req.body.password, user.password);
-    if (!isPasswordValid) {
-        console.log("Password mismatch for user:", req.body.email);
-        return res.status(400).json({ message: "Invalid email or password" });
-    }
-
-    console.log("Password validated successfully for user:", user.email);
-
-    // Optional: Refresh token if needed
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: true,             // Always secure in production
-      sameSite: 'None',         // Always 'None' for cross-origin cookies
-    });
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
- 
-    // Ensure the token is also in the response body
+    if (!decoded || !decoded.id) {
+      console.log("Invalid token.");
+      return res.status(401).json({ message: "Invalid token" });
+    }
+
+    // Find the user by the ID from the token
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      console.log("User not found for ID:", decoded.id);
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log("User successfully fetched:", user.email);
+
+    // Send the user data without sensitive info (like password)
     res.status(200).json({
-      token,  
       id: user._id,
       role: user.role,
       name: user.name,
       gender: user.gender,
-      message: "Login successful",
+      email: user.email
     });
 
   } catch (error) {
@@ -129,7 +128,7 @@ exports.findOne = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-  
+
   
 
 //AUTH
