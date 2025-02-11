@@ -20,12 +20,12 @@ exports.login = async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: user._id },
+      { id: user._id, role: user.role, gender: user.gender }, // Include role and gender in token payload
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    // Return token in the response body instead of cookies
+    // Return token and user details in the response body
     res.status(200).json({
       token,
       id: user._id,

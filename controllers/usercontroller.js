@@ -9,14 +9,37 @@ const { google } = require('googleapis');
 const mongoose = require("mongoose");
 
 
-exports.generateToken = (userId) => {
-  // Generate a JWT with the user ID
+exports.generateToken = (userId, role, gender) => {
+  // Generate a JWT with the user ID, role, and gender
   return jwt.sign(
-    { id: userId }, // Include the user ID in the payload
+    { id: userId, role, gender }, // Include user details in the payload
     process.env.JWT_SECRET, // Secret from .env file
     { expiresIn: "1h" } // Token expires in 1 hour
   );
 };
+
+exports.findOne = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password"); // Exclude password from response
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      gender: user.gender,
+      fitness_level: user.fitness_level,
+      goal: user.goal,
+    });
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
 
 
 exports.findAll = async (req, res) => {
@@ -83,19 +106,6 @@ exports.findOneId = async (req, res) => {
   } catch (err) {
     console.error("Error retrieving user:", err.message);
     res.status(500).json({ message: "Unable to retrieve user", error: err.message });
-  }
-};
-
-exports.findOne = async (req, res) => {
-
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ message: "Server error" });
   }
 };
 
