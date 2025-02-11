@@ -16,9 +16,11 @@ exports.login = async (req, res) => {
     // Set the cookie
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',  // Secure only in production
-      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',  // Allow cross-origin in production
+      secure: true,  // Always true in production to ensure HTTPS
+      sameSite: 'None',  // Required for cross-origin cookies
     });
+    console.log("Token sent in cookie:", token);  // Check if the token is generated and sent
+    res.status(200).json({ message: "Login successful", token });
     
     // Ensure the token is also in the response body
     res.status(200).json({

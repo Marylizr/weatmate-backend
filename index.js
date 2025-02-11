@@ -30,16 +30,13 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // CORS Configuration
-const corsOptions = {
-    origin: [
-        "http://localhost:3000", 
-        "https://sweatmateapp.netlify.app" // Add your Netlify frontend URL
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-};
-app.use(cors(corsOptions));
+
+
+app.use(cors({
+  origin: 'https://sweatmateapp.netlify.app',
+  credentials: true
+}));
+
 app.options("*", cors());  // Handle preflight requests
 
 // Routes
@@ -49,6 +46,11 @@ app.get('/', (req, res) => {
     res.status(200).json({ message: 'SweatMate Backend is Running!' });
 });
 app.use("/", appRouter);
+app.use((req, res, next) => {
+    console.log(`Incoming request from: ${req.headers.origin}`);
+    next();
+  });
+  
 
 // Default Route to Confirm Server is Running
 
