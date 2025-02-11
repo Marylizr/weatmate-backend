@@ -15,9 +15,10 @@ exports.login = async (req, res) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'None',
+      secure: process.env.NODE_ENV === 'production', // Only secure in production
+      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax', // Lax is better for development
     });
+    
 
     res.status(200).json({
         id: user._id,
