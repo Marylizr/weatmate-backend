@@ -88,11 +88,21 @@ exports.findOneId = async (req, res) => {
 
 
 exports.findOne = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
+      
+      try {
+        const user = await User.findOne({ email: req.body.email });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+        console.log("User not found for email:", req.body.email);
+        return res.status(400).json({ message: "Invalid email or password" });
     }
+
+    const isPasswordValid = await bcrypt.compare(req.body.password, user.password);
+    if (!isPasswordValid) {
+        console.log("Password mismatch for user:", req.body.email);
+        return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    console.log("Password validated successfully for user:", user.email);
 
     // Optional: Refresh token if needed
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
