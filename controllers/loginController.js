@@ -1,46 +1,37 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const User = require("../models/userModel");
+const User = require("../models/userModel"); // Adjust the path based on your structure
 
 exports.login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
 
+  try {
+    // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res.status(404).json({ message: "User not found" });
     }
 
+    // Compare passwords
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res.status(401).json({ message: "Invalid password" });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '24h' });
-
-    // Set the cookie
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
-      domain: process.env.NODE_ENV === 'production' ? '.netlify.app' : 'localhost',
-      path: '/',
+    // Generate JWT
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
     });
 
-    console.log("Token sent in cookie:", token);
-
-    // Send only one response here
-    res.status(200).json({
+    // Return user session
+    return res.status(200).json({
       token,
       id: user._id,
       role: user.role,
       name: user.name,
-      gender: user.gender,
-      message: "Login successful",
     });
-
   } catch (error) {
-    console.error("Login Error:", error.message);
-    res.status(500).json({ message: "Server error during login" });
+    console.error("Error during login:", error.message);
+    return res.status(500).json({ message: "Login failed", error: error.message });
   }
 };

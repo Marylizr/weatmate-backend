@@ -87,44 +87,14 @@ exports.findOneId = async (req, res) => {
 };
 
 exports.findOne = async (req, res) => {
+
   try {
-    // Extract the token from cookies
-    const token = req.cookies.token;
-
-    if (!token) {
-      console.log("No token provided in cookies.");
-      return res.status(401).json({ message: "Authorization token missing or malformed" });
-    }
-
-    // Verify the token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    if (!decoded || !decoded.id) {
-      console.log("Invalid token.");
-      return res.status(401).json({ message: "Invalid token" });
-    }
-
-    // Find the user by the ID from the token
-    const user = await User.findById(decoded.id);
-
+    const user = await User.findById(req.user.id);
     if (!user) {
-      console.log("User not found for ID:", decoded.id);
       return res.status(404).json({ message: "User not found" });
     }
-
-    console.log("User successfully fetched:", user.email);
-
-    // Send the user data without sensitive info (like password)
-    res.status(200).json({
-      id: user._id,
-      role: user.role,
-      name: user.name,
-      gender: user.gender,
-      email: user.email
-    });
-
+    res.json(user);
   } catch (error) {
-    console.error("Error fetching user:", error);
     res.status(500).json({ message: "Server error" });
   }
 };

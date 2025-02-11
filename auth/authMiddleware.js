@@ -1,33 +1,21 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel"); // Ensure the User model path is correct
 
-
 exports.authMiddleware = async (req, res, next) => {
-  // Extract token from cookies first, then headers
-  const tokenFromCookie = req.cookies?.token;
   const authHeader = req.headers.authorization;
+  console.log("Received Authorization Header:", authHeader);
 
-  let token = null;
-
-  // Priority: Check cookies first (since we set cookies in the login)
-  if (tokenFromCookie) {
-    token = tokenFromCookie;
-  } else if (authHeader && authHeader.startsWith("Bearer ")) {
-    token = authHeader.split(" ")[1];
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    console.log("Authorization header missing or malformed");
+    return res.status(401).json({ message: "Authorization header missing or malformed" });
   }
 
-  // If no token is found, deny access
-  if (!token) {
-    console.log("Authorization token missing or malformed");
-    return res.status(401).json({ message: "Authorization token missing or malformed" });
-  }
+  const token = authHeader.split(" ")[1];
 
   try {
-    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log("Decoded Token:", decoded);
 
-    // Find user based on the decoded token's ID
     const user = await User.findById(decoded.id);
     if (!user) {
       console.log("User not found for ID:", decoded.id);
@@ -36,19 +24,16 @@ exports.authMiddleware = async (req, res, next) => {
 
     console.log(`Authenticated User: ${user.name} - Role: ${user.role}`);
 
-    // Attach user to the request for downstream use
-    req.user = user;
-    req.sessionUser = user;  // For consistent naming if used elsewhere
-
+    req.user = user;  // Attach user to the request
+    req.sessionUser = user;  // For consistency
     console.log("Middleware successfully attached user to request:", req.user);
 
-    next();  // Proceed to the next middleware or route handler
+    next();
   } catch (error) {
     console.error("Token verification failed:", error.message);
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
-
 
 
 
