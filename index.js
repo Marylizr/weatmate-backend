@@ -30,12 +30,17 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 
 const corsOptions = {
-     origin: process.env.BASE_URL || 'https://sweatmateapp.netlify.app',
-    credentials: true,
+    origin: process.env.BASE_URL || 'https://sweatmateapp.netlify.app',
+    credentials: true,  // Allow credentials if needed
     allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],  // Ensure all necessary methods are allowed
 };
+
 app.use(cors(corsOptions));
-app.options("*", cors());  // Handle preflight requests
+
+// Explicitly handle preflight requests
+app.options("*", cors(corsOptions));
+
 
 // Routes
 const appRouter = require('./router');
