@@ -3,7 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const connectToDatabase = require('./mongo/index');  // Import the MongoDB connection
 const app = express();
-const port = process.env.PORT;
+const port = process.env.PORT || 3001; 
+
 
 if (!port) {
     console.error("PORT environment variable is not defined.");
@@ -30,25 +31,11 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 
 const corsOptions = {
-    origin: process.env.BASE_URL || 'https://localhost:3000',
-    credentials: true,  // Allow credentials if needed
+     origin: process.env.BASE_URL || 'https://sweatmateapp.netlify.app',
     allowedHeaders: ['Content-Type', 'Authorization'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],  // Ensure all necessary methods are allowed
 };
-
-// const corsOptions = {
-//     origin: process.env.BASE_URL || 'https://sweatmateapp.netlify.app',
-//     credentials: true, 
-//     allowedHeaders: ['Content-Type', 'Authorization'],
-//     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], 
-// };
-
-
 app.use(cors(corsOptions));
-
-// Explicitly handle preflight requests
-app.options("*", cors(corsOptions));
-
+app.options("*", cors());  // Handle preflight requests
 
 // Routes
 const appRouter = require('./router');
