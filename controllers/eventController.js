@@ -33,6 +33,8 @@ exports.findOne = async (req, res) => {
   }
 };
 
+
+
 exports.create = async (req, res) => {
   try {
     const {
@@ -51,9 +53,12 @@ exports.create = async (req, res) => {
     } = req.body;
 
     // Ensure trainerId is coming from the authenticated user
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: "Unauthorized: Trainer ID is missing." });
+    }
     const trainerId = req.user.id;
 
-    // If the event is Trainer-Only, set userId as an empty array
+    // If the event is Trainer-Only, userId should be an empty array
     let assignedUsers = trainerOnly ? [] : userId;
 
     // Validate required fields
@@ -86,6 +91,7 @@ exports.create = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
+
 
 
 

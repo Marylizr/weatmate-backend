@@ -12,6 +12,7 @@ eventRouter.get('/:id', eventController.findOne);
 // Create a new event (only accessible to authenticated trainers)
 eventRouter.post('/', authenticateTrainer, eventController.create);
 
+
 // Delete an event by ID (only accessible to authenticated trainers)
 eventRouter.delete('/:id', authenticateTrainer, eventController.delete);
 
