@@ -34,34 +34,56 @@ exports.findOne = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const { eventType, title, date, duration, userId, customerEmail, location, description, trainerOnly } = req.body;
-  const trainerId = req.trainer._id; // Get the trainer ID from the authenticated request
-
-  if (!eventType || !title || !date || !duration || !trainerId) {
-    return res.status(400).json({ message: "Missing required fields" });
-  }
-
   try {
-    const newEvent = new Event({
+    const {
+      eventType,
+      title,
+      date,
+      duration,
+      trainerOnly,
+      userId,
+      location,
+      description,
+      customerEmail,
+      status,
+      confirmationStatus,
+      rescheduleHistory
+    } = req.body;
+
+    // Ensure trainerId is coming from the authenticated user
+    const trainerId = req.user.id;
+
+    // If the event is Trainer-Only, set userId as an empty array
+    let assignedUsers = trainerOnly ? [] : userId;
+
+    // Validate required fields
+    if (!eventType || !title || !date || !duration) {
+      return res.status(400).json({ message: "Missing required event details." });
+    }
+
+    // Create the event
+    const event = new Event({
       eventType,
       title,
       date,
       duration,
       trainerId,
-      userId: userId[0] || null, // Store only the first user ID if an array is provided
-      customerEmail: customerEmail || null,
+      userId: assignedUsers, // Should be empty if trainerOnly is true
+      trainerOnly,
       location,
       description,
-      trainerOnly: trainerOnly || false,
-      status: 'pending',
-      confirmationStatus: 'not_sent'
+      customerEmail,
+      status,
+      confirmationStatus,
+      rescheduleHistory,
     });
 
-    const savedEvent = await newEvent.save();
-    res.status(201).json({ message: "Event created successfully", newEvent: savedEvent });
+    await event.save();
+
+    res.status(201).json({ message: "Event created successfully.", event });
   } catch (error) {
     console.error("Error creating event:", error);
-    res.status(500).json({ message: "Unable to create event", error: error.message });
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
 

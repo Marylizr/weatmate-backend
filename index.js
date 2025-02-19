@@ -31,7 +31,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 
 const corsOptions = {
-     origin: process.env.BASE_URL || 'https://sweatmateapp.netlify.app',
+    origin: process.env.BASE_URL || 'https://sweatmateapp.netlify.app',
     allowedHeaders: ['Content-Type', 'Authorization'],
 };
 app.use(cors(corsOptions));

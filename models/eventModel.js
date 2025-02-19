@@ -5,7 +5,7 @@ const EventSchema = new Schema({
   eventType: {
     type: String,
     required: true,
-    enum: ["personal_training", "group_class", "gathering"]
+    enum: ["personal_training", "group_class", "gathering", "other"] // Added 'other'
   },
   title: {
     type: String,
@@ -28,9 +28,9 @@ const EventSchema = new Schema({
     {
       type: Schema.Types.ObjectId,
       ref: 'User', // Ensure this points to the User model
+      required: function () { return !this.trainerOnly; } // Only required if NOT trainer-only
     },
   ],
-
   customerEmail: {
     type: String, // To store the customer's email for sending confirmations
     required: false
