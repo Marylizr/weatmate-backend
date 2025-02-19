@@ -2,6 +2,7 @@ const express = require('express');
 const eventController = require('../controllers/eventController');
 const authenticateTrainer = require('../auth/authenticateTrainer'); // Import the middleware
 const eventRouter = express.Router();
+const { authMiddleware } = require('../auth/authMiddleware');
 
 // Get all events (this might not need authentication depending on your requirements)
 eventRouter.get('/', eventController.findAll);
@@ -10,7 +11,7 @@ eventRouter.get('/', eventController.findAll);
 eventRouter.get('/:id', eventController.findOne);
 
 // Create a new event (only accessible to authenticated trainers)
-eventRouter.post('/', authenticateTrainer, eventController.create);
+eventRouter.post('/', authenticateTrainer, authMiddleware, eventController.create);
 
 
 // Delete an event by ID (only accessible to authenticated trainers)
