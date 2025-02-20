@@ -5,7 +5,7 @@ const EventSchema = new Schema({
   eventType: {
     type: String,
     required: true,
-    enum: ["personal_training", "group_class", "gathering", "other"] // Added 'other'
+    enum: ["personal_training", "group_class", "gathering", "other"] // Includes 'other'
   },
   title: {
     type: String,
@@ -27,12 +27,24 @@ const EventSchema = new Schema({
   userId: [
     {
       type: Schema.Types.ObjectId,
-      ref: 'User', // Ensure this points to the User model
-      required: function () { return !this.trainerOnly; } // Only required if NOT trainer-only
+      ref: 'User', 
+      required: function () { return !this.trainerOnly; } // Required only if NOT trainer-only
     },
   ],
+  confirmedUsers: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: 'User' // Users who confirmed the event
+    }
+  ],
+  declinedUsers: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: 'User' // Users who declined the event
+    }
+  ],
   customerEmail: {
-    type: String, // To store the customer's email for sending confirmations
+    type: String, // To store the customer's email for confirmations
     required: false
   },
   location: {
@@ -53,7 +65,11 @@ const EventSchema = new Schema({
   confirmationStatus: {
     type: String,
     enum: ["not_sent", "sent", "confirmed"],
-    default: "not_sent" // Track the status of the email confirmation
+    default: "not_sent" // Tracks email confirmation status
+  },
+  notificationSent: {
+    type: Boolean, 
+    default: false // Tracks if users have been notified
   },
   rescheduleHistory: [
     {

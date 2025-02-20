@@ -34,7 +34,6 @@ exports.findOne = async (req, res) => {
 };
 
 
-
 exports.create = async (req, res) => {
   try {
     const {
@@ -218,3 +217,31 @@ exports.updateEventStatus = async (req, res) => {
   }
 };
 
+exports.getUserEvents = async (req, res) => {
+  try {
+    const events = await Event.find({ userId: req.user.id });
+    const unreadCount = events.filter(event => !event.confirmedUsers.includes(req.user.id)).length;
+    
+    res.status(200).json({ events, unreadCount });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching events.", error: error.message });
+  }
+};
+
+exports.confirmEvent = async (req, res) => {
+  try {
+    await Event.findByIdAndUpdate(req.params.id, { $addToSet: { confirmedUsers: req.user.id } });
+    res.status(200).json({ message: "Event confirmed." });
+  } catch (error) {
+    res.status(500).json({ message: "Error confirming event.", error: error.message });
+  }
+};
+
+exports.cancelEvent = async (req, res) => {
+  try {
+    await Event.findByIdAndUpdate(req.params.id, { $pull: { userId: req.user.id } });
+    res.status(200).json({ message: "Event canceled." });
+  } catch (error) {
+    res.status(500).json({ message: "Error canceling event.", error: error.message });
+  }
+};

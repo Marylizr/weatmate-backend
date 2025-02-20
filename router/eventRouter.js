@@ -1,35 +1,37 @@
 const express = require('express');
 const eventController = require('../controllers/eventController');
-const authenticateTrainer = require('../auth/authenticateTrainer'); // Import the middleware
+const authenticateTrainer = require('../auth/authenticateTrainer'); // Middleware for trainers
+const { authMiddleware } = require('../auth/authMiddleware'); // General authentication
 const eventRouter = express.Router();
-const { authMiddleware } = require('../auth/authMiddleware');
 
-// Get all events (this might not need authentication depending on your requirements)
-eventRouter.get('/', eventController.findAll);
+//  Get all events (Accessible to authenticated users)
+eventRouter.get('/', authMiddleware, eventController.findAll);
 
-// Get one event by ID
-eventRouter.get('/:id', eventController.findOne);
+//  Get a single event by ID
+eventRouter.get('/:id', authMiddleware, eventController.findOne);
 
-// Create a new event (only accessible to authenticated trainers)
+// Create a new event (Only accessible to authenticated trainers)
 eventRouter.post('/', authenticateTrainer, authMiddleware, eventController.create);
 
-
-// Delete an event by ID (only accessible to authenticated trainers)
+//  Delete an event by ID (Only accessible to authenticated trainers)
 eventRouter.delete('/:id', authenticateTrainer, eventController.delete);
 
-// Update an event by ID (only accessible to authenticated trainers)
+//  Update an event by ID (Only accessible to authenticated trainers)
 eventRouter.put('/:id', authenticateTrainer, eventController.update);
 
-// Update an event partially by ID (only accessible to authenticated trainers)
+//  Update an event partially by ID (Only accessible to authenticated trainers)
 eventRouter.patch('/:id', authenticateTrainer, eventController.update);
 
-// Confirm an event and send a confirmation email (only accessible to authenticated trainers)
-eventRouter.put('/:id/confirm', authenticateTrainer, eventController.confirmEvent);
+//  Confirm or Decline an Event (Accessible to assigned users)
+eventRouter.post('/:id/confirm', authMiddleware, eventController.confirmOrDeclineEvent);
 
-// Reschedule an event (only accessible to authenticated trainers)
+//  Reschedule an event (Only accessible to authenticated trainers)
 eventRouter.put('/:id/reschedule', authenticateTrainer, eventController.rescheduleEvent);
 
-// Update event status (custom route to mark as completed or canceled)
+//  Update event status (Mark as completed or canceled) (Trainers only)
 eventRouter.put('/:id/status', authenticateTrainer, eventController.updateEventStatus);
+
+// Send notifications for upcoming events (Trainers/Admins only)
+eventRouter.post('/notify', authenticateTrainer, eventController.sendEventNotifications);
 
 module.exports = { eventRouter };
