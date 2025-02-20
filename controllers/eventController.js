@@ -93,9 +93,6 @@ exports.create = async (req, res) => {
 
 
 
-
-
-
 // Confirm an event and send a confirmation email
 exports.confirmEvent = async (req, res) => {
   const { id } = req.params;
@@ -168,6 +165,14 @@ exports.delete = async (req, res) => {
   }
 };
 
+exports.cancelEvent = async (req, res) => {
+  try {
+    await Event.findByIdAndUpdate(req.params.id, { $pull: { userId: req.user.id } });
+    res.status(200).json({ message: "Event canceled." });
+  } catch (error) {
+    res.status(500).json({ message: "Error canceling event.", error: error.message });
+  }
+};
 
 
 // Update an event
@@ -237,11 +242,18 @@ exports.confirmEvent = async (req, res) => {
   }
 };
 
-exports.cancelEvent = async (req, res) => {
+// Send Event Notifications
+exports.sendEventNotifications = async (req, res) => {
   try {
-    await Event.findByIdAndUpdate(req.params.id, { $pull: { userId: req.user.id } });
-    res.status(200).json({ message: "Event canceled." });
+    const events = await Event.find({ status: "pending" }).populate("userId", "email name");
+    events.forEach(event => {
+      if (event.userId.email) {
+        sendEmail(event.userId.email, "Upcoming Event", `You have an event: ${event.title}`);
+      }
+    });
+
+    res.status(200).json({ message: "Notifications sent successfully." });
   } catch (error) {
-    res.status(500).json({ message: "Error canceling event.", error: error.message });
+    res.status(500).json({ message: "Error sending notifications.", error: error.message });
   }
 };

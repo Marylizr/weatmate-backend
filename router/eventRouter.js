@@ -23,7 +23,7 @@ eventRouter.put('/:id', authenticateTrainer, eventController.update);
 eventRouter.patch('/:id', authenticateTrainer, eventController.update);
 
 //  Confirm or Decline an Event (Accessible to assigned users)
-eventRouter.post('/:id/confirm', authMiddleware, eventController.confirmOrDeclineEvent);
+eventRouter.post('/:id/confirm', authMiddleware, eventController.confirmEvent);
 
 //  Reschedule an event (Only accessible to authenticated trainers)
 eventRouter.put('/:id/reschedule', authenticateTrainer, eventController.rescheduleEvent);
