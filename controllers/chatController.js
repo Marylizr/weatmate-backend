@@ -60,7 +60,7 @@ exports.create = async (req, res) => {
     const { name, content, infotype, subCategory, picture } = req.body;
 
     // Validate Required Fields
-    if (!userName || !content || !infotype) {
+    if (!name || !content || !infotype) {
       return res
         .status(400)
         .send({ error: "userName, content, and infotype are required." });

@@ -5,15 +5,18 @@ const sendEmail = require('../sendVerificationEmail');
 
 exports.findAll = async (req, res) => {
   try {
-    const events = await Event.find()
-      .populate('userId', 'name email') // Populate user info (name, email)
-      .populate('trainerId', 'name email'); // Populate trainer info
+    const query = req.query.userId ? { userId: req.query.userId } : {};
+    
+    const events = await Event.find(query)
+      .populate('userId', 'name email')
+      .populate('trainerId', 'name email');
 
     res.status(200).json(events);
   } catch (error) {
     res.status(500).json({ message: "Unable to retrieve events", error: error.message });
   }
 };
+
 
 // Find a specific event by ID with populated user and trainer details
 exports.findOne = async (req, res) => {
