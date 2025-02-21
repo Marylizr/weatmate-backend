@@ -28,6 +28,7 @@ exports.findOne = async (req, res) => {
       id: user._id,
       name: user.name,
       email: user.email,
+      image: user.image,
       role: user.role,
       gender: user.gender,
       fitness_level: user.fitness_level,
