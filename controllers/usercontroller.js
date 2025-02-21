@@ -32,6 +32,15 @@ exports.findOne = async (req, res) => {
       gender: user.gender,
       fitness_level: user.fitness_level,
       goal: user.goal,
+      age: user.age,
+      weight: user.weight,
+      height: user.height,
+      degree: user.degree,
+      experience: user.experience,
+      specializations: user.specializations,
+      bio: user.bio,
+      location: user.location,
+      trainerId:user.trainerId,
     });
   } catch (error) {
     console.error("Error fetching user:", error);
