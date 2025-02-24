@@ -3,24 +3,22 @@ const express = require('express');
 const cors = require('cors');
 const connectToDatabase = require('./mongo/index');  // Import the MongoDB connection
 const app = express();
+const port = process.env.PORT || 3001; 
 
-// Set the port dynamically based on environment
-const port = process.env.PORT || 3001;
 
 if (!port) {
     console.error("PORT environment variable is not defined.");
     process.exit(1); // Exit if PORT isn't set
 }
-
-// Enforce HTTPS in production
 if (process.env.NODE_ENV === 'production') {
-    app.use((req, res, next) => {
-        if (req.headers['x-forwarded-proto'] !== 'https') {
-            return res.redirect(`https://${req.headers.host}${req.url}`);
-        }
-        next();
-    });
+  app.use((req, res, next) => {
+      if (req.headers['x-forwarded-proto'] !== 'https') {
+          return res.redirect('https://' + req.headers.host + req.url);
+      }
+      next();
+  });
 }
+
 
 // Connect to MongoDB
 connectToDatabase();
@@ -29,45 +27,25 @@ connectToDatabase();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// CORS Configuration
 
-
-const allowedOrigins = [
-    "https://sweatmateapp.netlify.app",  // Production Frontend
-    "http://localhost:3000"  // Local Development Frontend
-];
 
 const corsOptions = {
-    origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            console.error("Blocked CORS request from:", origin);
-            callback(new Error("CORS not allowed for this origin."));
-        }
-    },
-    credentials: true,  // Allow cookies and authorization headers
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allowed HTTP methods
-    allowedHeaders: ["Content-Type", "Authorization"], // Allowed headers
+    origin: process.env.BASE_URL || 'https://sweatmateapp.netlify.app',
+    allowedHeaders: ['Content-Type', 'Authorization'],
 };
-
-// Apply CORS middleware globally
 app.use(cors(corsOptions));
-
-// Ensure preflight OPTIONS requests are handled properly
-app.options("*", (req, res) => {
-    res.sendStatus(204);
-});
-
-
+app.options("*", cors());  // Handle preflight requests
 
 // Routes
 const appRouter = require('./router');
 app.use('/', appRouter);
 
-// Health check endpoint
 app.get('/', (req, res) => {
     res.status(200).json({ message: 'SweatMate Backend is Running!' });
 });
+
+// Default Route to Confirm Server is Running
 
 // Start Server
 app.listen(port, () => {

@@ -19,32 +19,12 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
-    console.log("User found in DB:", { 
-      _id: user._id, 
-      name: user.name, 
-      email: user.email, 
-      role: user.role, 
-      gender: user.gender 
-    });
-
     // Validate the password
     console.log("Comparing password for user:", email);
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       console.log("Password mismatch for user:", email);
       return res.status(400).json({ message: "Invalid email or password" });
-    }
-
-    // Ensure JWT_SECRET is defined
-    if (!process.env.JWT_SECRET) {
-      console.error("FATAL ERROR: JWT_SECRET is not defined.");
-      return res.status(500).json({ message: "Server misconfiguration: JWT_SECRET is missing." });
-    }
-
-    // Ensure user role and gender exist
-    if (!user.role || !user.gender) {
-      console.error("User is missing role or gender:", { role: user.role, gender: user.gender });
-      return res.status(500).json({ message: "User data is incomplete. Contact support." });
     }
 
     // Generate JWT token
@@ -57,25 +37,13 @@ exports.login = async (req, res) => {
 
     console.log("JWT token generated successfully:", token);
 
-    // Return full user details in response to prevent frontend session issues
+    // Return token and user details
     res.status(200).json({
       token,
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      image: user.image || "",  
+      id: user._id,
       role: user.role,
+      name: user.name,
       gender: user.gender,
-      age: user.age || null,
-      weight: user.weight || null,
-      height: user.height || null,
-      goal: user.goal || "",
-      degree: user.degree || "",
-      experience: user.experience || 0,
-      specializations: user.specializations || "",
-      bio: user.bio || "",
-      location: user.location || "",
-      trainerId: user.trainerId || "",
       message: "Login successful"
     });
 
@@ -84,3 +52,4 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: "Server error during login", error: error.toString() });
   }
 };
+
