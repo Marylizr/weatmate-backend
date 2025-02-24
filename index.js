@@ -30,8 +30,6 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 
-const cors = require("cors"); // Ensure cors is required at the top
-
 const allowedOrigins = [
     "https://sweatmateapp.netlify.app",  // Production Frontend
     "http://localhost:3000"  // Local Development Frontend
