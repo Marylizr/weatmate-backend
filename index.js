@@ -30,9 +30,11 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 
+const cors = require("cors"); // Ensure cors is required at the top
+
 const allowedOrigins = [
-    "https://sweatmateapp.netlify.app",
-    "http://localhost:3000" // Development mode
+    "https://sweatmateapp.netlify.app",  // Production Frontend
+    "http://localhost:3000"  // Local Development Frontend
 ];
 
 const corsOptions = {
@@ -40,24 +42,22 @@ const corsOptions = {
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            console.warn("CORS not allowed for this origin:", origin);
+            console.error("Blocked CORS request from:", origin);
             callback(new Error("CORS not allowed for this origin."));
         }
     },
     credentials: true,  // Allow cookies and authorization headers
-    allowedHeaders: ["Content-Type", "Authorization"],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],  // Allow necessary HTTP methods
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allowed HTTP methods
+    allowedHeaders: ["Content-Type", "Authorization"], // Allowed headers
 };
 
 app.use(cors(corsOptions));
 
-// ✅ Ensure preflight requests work properly
-app.options("*", (req, res) => {
-    res.header("Access-Control-Allow-Origin", req.headers.origin);
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    res.sendStatus(204);
-});
+// Handle preflight (OPTIONS) requests properly
+app.options("*", cors()); 
+
+
+
 
 
 
