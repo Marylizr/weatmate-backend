@@ -19,9 +19,8 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
-    // Log user details for debugging
     console.log("User found in DB:", { 
-      id: user._id, 
+      _id: user._id, 
       name: user.name, 
       email: user.email, 
       role: user.role, 
@@ -58,13 +57,25 @@ exports.login = async (req, res) => {
 
     console.log("JWT token generated successfully:", token);
 
-    // Return token and user details
+    // Return full user details in response to prevent frontend session issues
     res.status(200).json({
       token,
-      id: user._id,
-      role: user.role,
+      _id: user._id,
       name: user.name,
+      email: user.email,
+      image: user.image || "",  
+      role: user.role,
       gender: user.gender,
+      age: user.age || null,
+      weight: user.weight || null,
+      height: user.height || null,
+      goal: user.goal || "",
+      degree: user.degree || "",
+      experience: user.experience || 0,
+      specializations: user.specializations || "",
+      bio: user.bio || "",
+      location: user.location || "",
+      trainerId: user.trainerId || "",
       message: "Login successful"
     });
 
