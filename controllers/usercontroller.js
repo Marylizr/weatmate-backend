@@ -21,51 +21,39 @@ exports.generateToken = (userId, role, gender) => {
 
 exports.findOne = async (req, res) => {
   try {
-    console.log("Token Received in Request:", req.headers.authorization);
+      console.log("Fetching user data for ID:", req.user.id);
 
-    if (!req.user) {
-      console.log("Session User Not Found in Middleware");
-      return res.status(401).json({ message: "Unauthorized - No user session found" });
-    }
+      const user = await User.findById(req.user.id).select("-password"); // Exclude password from response
+      if (!user) {
+          console.log("User not found:", req.user.id);
+          return res.status(404).json({ message: "User not found" });
+      }
 
-    console.log("Session User ID from Middleware:", req.user._id);
-
-    const user = await User.findById(req.user._id).select("-password");
-
-    if (!user) {
-      console.log("No user found in DB for ID:", req.user._id);
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    console.log("User Found in DB:", user);
-
-    res.json({
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      gender: user.gender,
-      image: user.image,
-      fitness_level: user.fitness_level,
-      goal: user.goal,
-      age: user.age,
-      weight: user.weight,
-      height: user.height,
-      degree: user.degree,
-      experience: user.experience,
-      specializations: user.specializations,
-      bio: user.bio,
-      location: user.location,
-      trainerId: user.trainerId,
-    });
-
+      console.log("Returning User Data:", user);
+      res.json({
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+          role: user.role,
+          gender: user.gender,
+          fitness_level: user.fitness_level,
+          goal: user.goal,
+          age: user.age,
+          weight: user.weight,
+          height: user.height,
+          degree: user.degree,
+          experience: user.experience,
+          specializations: user.specializations,
+          bio: user.bio,
+          location: user.location,
+          trainerId: user.trainerId,
+      });
   } catch (error) {
-    console.error("Error fetching user:", error.message);
-    res.status(500).json({ message: "Server error" });
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Server error" });
   }
 };
-
-
 
 
 

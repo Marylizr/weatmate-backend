@@ -7,34 +7,39 @@ exports.authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    console.log("Authorization token missing or malformed");
-    return res.status(401).json({ message: "Authorization token missing or malformed" });
+      console.log("Authorization token missing or malformed");
+      return res.status(401).json({ message: "Authorization token missing or malformed" });
   }
 
   const token = authHeader.split(" ")[1];
   console.log("Authorization Header Received:", authHeader);
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("Decoded Token:", decoded);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log("Decoded Token:", decoded);
 
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      console.log("User not found for ID:", decoded.id);
-      return res.status(404).json({ message: "User not found" });
-    }
+      const user = await User.findById(decoded.id);
+      if (!user) {
+          console.log("User not found for ID:", decoded.id);
+          return res.status(404).json({ message: "User not found" });
+      }
 
-    console.log("User Found:", user.name, "ID:", user._id);
+      console.log("Attaching user to request:", {
+          id: user._id,
+          name: user.name,
+          email: user.email
+      });
 
-    req.user = user; // Attach user info
+      req.user = user; // Attach user info
 
-    console.log("Middleware successfully attached user to request:", req.user);
-    next();
+      console.log("Middleware successfully attached user to request:", req.user);
+      next();
   } catch (error) {
-    console.error("Token verification failed:", error.message);
-    return res.status(401).json({ message: "Invalid or expired token" });
+      console.error("Token verification failed:", error.message);
+      return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
+
 
 
 
