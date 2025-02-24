@@ -30,13 +30,14 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 
+
 const allowedOrigins = [
     "https://sweatmateapp.netlify.app",  // Production Frontend
     "http://localhost:3000"  // Local Development Frontend
 ];
 
 const corsOptions = {
-    origin: function (origin, callback) {
+    origin: (origin, callback) => {
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
@@ -49,13 +50,13 @@ const corsOptions = {
     allowedHeaders: ["Content-Type", "Authorization"], // Allowed headers
 };
 
+// Apply CORS middleware globally
 app.use(cors(corsOptions));
 
-// Handle preflight (OPTIONS) requests properly
-app.options("*", cors()); 
-
-
-
+// Ensure preflight OPTIONS requests are handled properly
+app.options("*", (req, res) => {
+    res.sendStatus(204);
+});
 
 
 
