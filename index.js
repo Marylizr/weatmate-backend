@@ -30,27 +30,18 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // CORS Configuration for local and production environments
-const allowedOrigins = [
-    'http://localhost:3000',
-    'https://sweatmateapp.netlify.app'
-];
-
 const corsOptions = {
-    origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            console.error(`Blocked CORS request from origin: ${origin}`);
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    origin: process.env.NODE_ENV === "production"
+        ? process.env.BASE_URL || "https://sweatmateapp.netlify.app"
+        : "http://localhost:3000", // Allow local frontend in development
+    credentials: true,  // Allow cookies and authorization headers
+    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],  // Allow all necessary HTTP methods
 };
 
 app.use(cors(corsOptions));
 app.options("*", cors());  // Handle preflight requests
+
 
 // Routes
 const appRouter = require('./router');
