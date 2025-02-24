@@ -2,7 +2,6 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/userModel"); // Ensure the User model path is correct
 
 
-
 exports.authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   
@@ -15,10 +14,12 @@ exports.authMiddleware = async (req, res, next) => {
   console.log("Authorization Header Received:", authHeader);
 
   try {
+    // Decode token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log("Decoded Token:", decoded);
 
-    const user = await User.findById(decoded.id);
+    // Find the user by ID
+    const user = await User.findById(decoded.id).select("-password"); // Exclude password from response
     if (!user) {
       console.log("User not found for ID:", decoded.id);
       return res.status(404).json({ message: "User not found" });
@@ -26,7 +27,8 @@ exports.authMiddleware = async (req, res, next) => {
 
     console.log(`Authenticated User: ${user.name} - Role: ${user.role}`);
 
-    req.user = user; // Attach user info
+    // Attach user data to request
+    req.user = user;
 
     console.log("Middleware successfully attached user to request:", req.user);
     next();
@@ -35,7 +37,6 @@ exports.authMiddleware = async (req, res, next) => {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
-
 
 
 
