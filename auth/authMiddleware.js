@@ -1,8 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel"); // Ensure the User model path is correct
 
-const jwt = require("jsonwebtoken");
-const User = require("../models/userModel");
+
 
 exports.authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;

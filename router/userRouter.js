@@ -2,7 +2,7 @@ const express = require('express');
 const userController = require('../controllers/usercontroller'); 
 const userRouter = express.Router();
 const { authMiddleware, IsAdmin, requireVerified } = require('../auth/authMiddleware');
-const  authenticatedTrainer  = require('../auth/authenticatedTrainer');
+const  authenticateTrainer  = require('../auth/authenticateTrainer');
 
 
 // Specific route for the logged-in user
@@ -25,7 +25,9 @@ userRouter.get('/verify-email', userController.verifyEmail);
 
    
 // Fetch all users (Admin Only and PT)
-userRouter.get('/', authMiddleware, authenticatedTrainer,  IsAdmin, userController.findAll);
+
+userRouter.get('/', authMiddleware, authenticateTrainer, userController.findAll);
+
 
 
 // Specific routes to fetch user data by different criteria
