@@ -500,18 +500,26 @@ exports.delete = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const loggedInUser = req.sessionUser;
+    const loggedInUser = req.sessionUser; // Ensure this is set by middleware
 
     console.log("Incoming Update Request:", req.body);
+    console.log("Logged-in User from Middleware:", loggedInUser);
 
+    // Ensure session user is available
+    if (!loggedInUser) {
+      return res.status(401).json({ message: "Unauthorized: User session not found" });
+    }
+
+    // Ensure request body is not empty
     if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({ message: "No update data provided" });
     }
 
     let userToUpdate;
 
+    // If an ID is provided, admin can update another user
     if (id) {
-      if (!loggedInUser || loggedInUser.role !== "admin") {
+      if (loggedInUser.role !== "admin") {
         return res.status(403).json({ message: "Access denied. Only admins can update other users' profiles." });
       }
       userToUpdate = await User.findById(id);
@@ -519,11 +527,20 @@ exports.update = async (req, res) => {
         return res.status(404).json({ message: "User not found" });
       }
     } else {
-      userToUpdate = loggedInUser;
+      // If no ID is provided, update the logged-in user
+      userToUpdate = await User.findById(loggedInUser._id); // Ensure valid user instance
+      if (!userToUpdate) {
+        return res.status(404).json({ message: "Logged-in user not found" });
+      }
     }
 
+    // Log user before update
+    console.log("User Before Update:", userToUpdate);
+
+    // Extract fields from the request
     const { password, email, ...updateData } = req.body;
 
+    // Ensure email is unique
     if (email && email !== userToUpdate.email) {
       const existingUser = await User.findOne({ email });
       if (existingUser && existingUser._id.toString() !== userToUpdate._id.toString()) {
@@ -532,18 +549,22 @@ exports.update = async (req, res) => {
       updateData.email = email;
     }
 
+    // Hash new password if provided
     if (password) {
       const salt = await bcrypt.genSalt(10);
       updateData.password = await bcrypt.hash(password, salt);
     }
 
+    // Assign updates only if fields are provided
     Object.assign(userToUpdate, updateData);
 
+    // Save the user
     await userToUpdate.save();
 
     console.log("User Updated Successfully:", userToUpdate);
 
     res.status(200).json({ message: "User has been updated successfully", updatedUser: userToUpdate });
+
   } catch (err) {
     console.error("Error updating user:", err.message);
     res.status(500).json({ message: "Unable to update user", error: err.message });
