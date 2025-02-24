@@ -1,10 +1,12 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel"); // Ensure the User model path is correct
 
-exports.authMiddleware = async (req, res, next) => {
-  // Extract token from Authorization header
-  const authHeader = req.headers.authorization;
+const jwt = require("jsonwebtoken");
+const User = require("../models/userModel");
 
+exports.authMiddleware = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     console.log("Authorization token missing or malformed");
     return res.status(401).json({ message: "Authorization token missing or malformed" });
@@ -14,11 +16,9 @@ exports.authMiddleware = async (req, res, next) => {
   console.log("Authorization Header Received:", authHeader);
 
   try {
-    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log("Decoded Token:", decoded);
 
-    // Find user based on the decoded token's ID
     const user = await User.findById(decoded.id);
     if (!user) {
       console.log("User not found for ID:", decoded.id);
@@ -27,39 +27,15 @@ exports.authMiddleware = async (req, res, next) => {
 
     console.log(`Authenticated User: ${user.name} - Role: ${user.role}`);
 
-    // Attach user to the request for downstream use
-    req.user = user;
-    req.sessionUser = user;  // For consistent naming if used elsewhere
+    req.user = user; // Attach user info
 
     console.log("Middleware successfully attached user to request:", req.user);
-
-    next();  // Proceed to the next middleware or route handler
+    next();
   } catch (error) {
     console.error("Token verification failed:", error.message);
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
-
-// exports.authMiddleware = (req, res, next) => {
-//   if (process.env.NODE_ENV === 'development') {
-//     req.user = { id: 'local-id', role: 'admin', gender: 'female' }; // Fake user data
-//     return next();
-//   }
-
-//   const token = req.headers.authorization?.split(' ')[1];
-//   if (!token) {
-//     return res.status(401).json({ message: 'Authorization token missing or malformed' });
-//   }
-
-//   try {
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//     req.user = decoded;
-//     next();
-//   } catch (err) {
-//     res.status(401).json({ message: 'Invalid token' });
-//   }
-// };
-
 
 
 
