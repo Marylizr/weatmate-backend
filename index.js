@@ -28,19 +28,32 @@ connectToDatabase();
 // Middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+const cors = require("cors");
 
 // CORS Configuration for local and production environments
+const allowedOrigins = [
+    "https://sweatmateapp.netlify.app",
+    "http://localhost:3000"  // Development mode
+];
+
 const corsOptions = {
-    origin: process.env.NODE_ENV === "production"
-        ? process.env.BASE_URL || "https://sweatmateapp.netlify.app"
-        : "http://localhost:3000", // Allow local frontend in development
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error("CORS not allowed for this origin."));
+        }
+    },
     credentials: true,  // Allow cookies and authorization headers
     allowedHeaders: ["Content-Type", "Authorization"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],  // Allow all necessary HTTP methods
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors());  // Handle preflight requests
+
+// Handle preflight requests properly
+app.options("*", cors(corsOptions)); 
+
 
 
 // Routes
