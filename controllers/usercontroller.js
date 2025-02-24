@@ -10,27 +10,42 @@ const mongoose = require("mongoose");
 
 
 exports.generateToken = (userId, role, gender) => {
-  // Generate a JWT with the user ID, role, and gender
+  console.log("Generating Token for:", { userId, role, gender });
+
   return jwt.sign(
-    { id: userId, role, gender }, // Include user details in the payload
-    process.env.JWT_SECRET, // Secret from .env file
-    { expiresIn: "1h" } // Token expires in 1 hour
+    { id: userId, role, gender },
+    process.env.JWT_SECRET,
+    { expiresIn: "2h" }
   );
 };
 
 exports.findOne = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password"); // Exclude password from response
+    console.log("Token Received in Request:", req.headers.authorization);
+
+    if (!req.user) {
+      console.log("Session User Not Found in Middleware");
+      return res.status(401).json({ message: "Unauthorized - No user session found" });
+    }
+
+    console.log("Session User ID from Middleware:", req.user._id);
+
+    const user = await User.findById(req.user._id).select("-password");
+
     if (!user) {
+      console.log("No user found in DB for ID:", req.user._id);
       return res.status(404).json({ message: "User not found" });
     }
+
+    console.log("User Found in DB:", user);
+
     res.json({
       id: user._id,
       name: user.name,
       email: user.email,
-      image: user.image,
       role: user.role,
       gender: user.gender,
+      image: user.image,
       fitness_level: user.fitness_level,
       goal: user.goal,
       age: user.age,
@@ -41,13 +56,15 @@ exports.findOne = async (req, res) => {
       specializations: user.specializations,
       bio: user.bio,
       location: user.location,
-      trainerId:user.trainerId,
+      trainerId: user.trainerId,
     });
+
   } catch (error) {
-    console.error("Error fetching user:", error);
+    console.error("Error fetching user:", error.message);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 
 

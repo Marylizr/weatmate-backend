@@ -19,12 +19,33 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
+    // Log user details for debugging
+    console.log("User found in DB:", { 
+      id: user._id, 
+      name: user.name, 
+      email: user.email, 
+      role: user.role, 
+      gender: user.gender 
+    });
+
     // Validate the password
     console.log("Comparing password for user:", email);
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       console.log("Password mismatch for user:", email);
       return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    // Ensure JWT_SECRET is defined
+    if (!process.env.JWT_SECRET) {
+      console.error("FATAL ERROR: JWT_SECRET is not defined.");
+      return res.status(500).json({ message: "Server misconfiguration: JWT_SECRET is missing." });
+    }
+
+    // Ensure user role and gender exist
+    if (!user.role || !user.gender) {
+      console.error("User is missing role or gender:", { role: user.role, gender: user.gender });
+      return res.status(500).json({ message: "User data is incomplete. Contact support." });
     }
 
     // Generate JWT token
@@ -52,4 +73,3 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: "Server error during login", error: error.toString() });
   }
 };
-
