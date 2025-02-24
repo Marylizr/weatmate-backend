@@ -28,6 +28,15 @@ const UserSchema = new Schema({
     type: String,
     required: [true, 'Password is required'],
   },
+  resetPasswordToken: 
+  { 
+    type: String 
+  },
+  resetPasswordExpire: 
+  { 
+    type: Date 
+  },
+
   image: String,
   age: {
     type: Number,

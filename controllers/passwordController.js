@@ -16,7 +16,7 @@ exports.forgotPassword = async (req, res) => {
     user.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
     user.resetPasswordExpire = Date.now() + 3600000; // Token valid for 1 hour
 
-    await user.save();
+    await user.save({ validateBeforeSave: false }); // Avoid triggering validation errors
 
     // Create reset URL
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
@@ -51,7 +51,7 @@ exports.verifyResetToken = async (req, res) => {
 
   try {
     const user = await User.findOne({
-      resetPasswordToken: hashedToken,
+      resetPasswordToken: hashedToken.toLowerCase(),
       resetPasswordExpire: { $gt: Date.now() }, // Ensure token is still valid
     });
 
@@ -73,11 +73,16 @@ exports.resetPassword = async (req, res) => {
 
   try {
     const user = await User.findOne({
-      resetPasswordToken: hashedToken,
+      resetPasswordToken: hashedToken.toLowerCase(),
       resetPasswordExpire: { $gt: Date.now() }, // Ensure token is valid
     });
 
     if (!user) return res.status(400).json({ message: "Invalid or expired token." });
+
+    // Check for valid password
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters long." });
+    }
 
     // Hash new password
     user.password = await bcrypt.hash(newPassword, 10);
@@ -95,4 +100,3 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ message: "Error resetting password." });
   }
 };
-

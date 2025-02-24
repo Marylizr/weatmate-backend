@@ -21,6 +21,7 @@ userRouter.post('/send-verification', userController.sendVerificationEmail);
 // Confirm email verification
 userRouter.get('/verify-email', userController.verifyEmail);
 
+userRouter.post("/reset-password", userController.resetPassword);
 
 
    
