@@ -10,48 +10,49 @@ const mongoose = require("mongoose");
 
 
 exports.generateToken = (userId, role, gender) => {
-  console.log("Generating Token for:", { userId, role, gender });
-
+  // Generate a JWT with the user ID, role, and gender
   return jwt.sign(
-    { id: userId, role, gender },
-    process.env.JWT_SECRET,
-    { expiresIn: "2h" }
+    { id: userId, role, gender }, // Include user details in the payload
+    process.env.JWT_SECRET, // Secret from .env file
+    { expiresIn: "1h" } // Token expires in 1 hour
   );
 };
 
+const decoded = jwt.verify(token, process.env.JWT_SECRET);
+console.log("Decoded Token:", decoded); // Ensure correct ID
+
+const user = await User.findById(decoded.id);
+console.log("Database Retrieved User:", user); // Ensure correct user is fetched
+
+
 exports.findOne = async (req, res) => {
   try {
-      console.log("Fetching user data for ID:", req.user.id);
-
-      const user = await User.findById(req.user.id).select("-password"); // Exclude password from response
-      if (!user) {
-          console.log("User not found:", req.user.id);
-          return res.status(404).json({ message: "User not found" });
-      }
-
-      console.log("Returning User Data:", user);
-      res.json({
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-          role: user.role,
-          gender: user.gender,
-          fitness_level: user.fitness_level,
-          goal: user.goal,
-          age: user.age,
-          weight: user.weight,
-          height: user.height,
-          degree: user.degree,
-          experience: user.experience,
-          specializations: user.specializations,
-          bio: user.bio,
-          location: user.location,
-          trainerId: user.trainerId,
-      });
+    const user = await User.findById(req.user.id).select("-password"); // Exclude password from response
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      role: user.role,
+      gender: user.gender,
+      fitness_level: user.fitness_level,
+      goal: user.goal,
+      age: user.age,
+      weight: user.weight,
+      height: user.height,
+      degree: user.degree,
+      experience: user.experience,
+      specializations: user.specializations,
+      bio: user.bio,
+      location: user.location,
+      trainerId:user.trainerId,
+    });
   } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Server error" });
+    console.error("Error fetching user:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -505,26 +506,18 @@ exports.delete = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const loggedInUser = req.sessionUser; // Ensure this is set by middleware
+    const loggedInUser = req.sessionUser;
 
     console.log("Incoming Update Request:", req.body);
-    console.log("Logged-in User from Middleware:", loggedInUser);
 
-    // Ensure session user is available
-    if (!loggedInUser) {
-      return res.status(401).json({ message: "Unauthorized: User session not found" });
-    }
-
-    // Ensure request body is not empty
     if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({ message: "No update data provided" });
     }
 
     let userToUpdate;
 
-    // If an ID is provided, admin can update another user
     if (id) {
-      if (loggedInUser.role !== "admin") {
+      if (!loggedInUser || loggedInUser.role !== "admin") {
         return res.status(403).json({ message: "Access denied. Only admins can update other users' profiles." });
       }
       userToUpdate = await User.findById(id);
@@ -532,20 +525,11 @@ exports.update = async (req, res) => {
         return res.status(404).json({ message: "User not found" });
       }
     } else {
-      // If no ID is provided, update the logged-in user
-      userToUpdate = await User.findById(loggedInUser._id); // Ensure valid user instance
-      if (!userToUpdate) {
-        return res.status(404).json({ message: "Logged-in user not found" });
-      }
+      userToUpdate = loggedInUser;
     }
 
-    // Log user before update
-    console.log("User Before Update:", userToUpdate);
-
-    // Extract fields from the request
     const { password, email, ...updateData } = req.body;
 
-    // Ensure email is unique
     if (email && email !== userToUpdate.email) {
       const existingUser = await User.findOne({ email });
       if (existingUser && existingUser._id.toString() !== userToUpdate._id.toString()) {
@@ -554,22 +538,18 @@ exports.update = async (req, res) => {
       updateData.email = email;
     }
 
-    // Hash new password if provided
     if (password) {
       const salt = await bcrypt.genSalt(10);
       updateData.password = await bcrypt.hash(password, salt);
     }
 
-    // Assign updates only if fields are provided
     Object.assign(userToUpdate, updateData);
 
-    // Save the user
     await userToUpdate.save();
 
     console.log("User Updated Successfully:", userToUpdate);
 
     res.status(200).json({ message: "User has been updated successfully", updatedUser: userToUpdate });
-
   } catch (err) {
     console.error("Error updating user:", err.message);
     res.status(500).json({ message: "Unable to update user", error: err.message });
