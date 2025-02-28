@@ -18,11 +18,6 @@ exports.generateToken = (userId, role, gender) => {
   );
 };
 
-const decoded = jwt.verify(token, process.env.JWT_SECRET);
-console.log("Decoded Token:", decoded); // Ensure correct ID
-
-const user = await User.findById(decoded.id);
-console.log("Database Retrieved User:", user); // Ensure correct user is fetched
 
 
 exports.findOne = async (req, res) => {
@@ -55,7 +50,6 @@ exports.findOne = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 
 exports.findAll = async (req, res) => {
