@@ -28,24 +28,31 @@ exports.findOne = async (req, res) => {
 
 // Create a new favorite workout
 exports.create = async (req, res) => {
-  const data = req.body;
+  const { userId, workoutName, date } = req.body;
+
   try {
-    const existingFav = await Fav.findOne({ name: data.name });
+    // Check if a workout with the same name already exists for this user on the same date
+    const existingFav = await Fav.findOne({ userId, workoutName, date });
+
     if (existingFav) {
-      return res.status(409).json({ message: "Workout already exists" });
+      return res.status(409).json({ message: "Workout already exists for this date" });
     }
 
-    const newFav = new Fav(data);
+    // Create and save the new workout
+    const newFav = new Fav(req.body);
     await newFav.save();
+
     res.status(201).json({
       status: "success",
       message: "Your new favorite workout was created successfully",
       data: newFav,
     });
+
   } catch (error) {
     res.status(500).json({ status: "error", message: error.message });
   }
 };
+
 
 // Update an existing workout by ID
 exports.update = async (req, res) => {
