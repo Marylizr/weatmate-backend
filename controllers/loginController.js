@@ -5,25 +5,26 @@ const User = require("../models/userModel");
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log("Login request received with email:", email);
+    const normalizedEmail = email.trim().toLowerCase();
+    console.log("Login request received with email:", normalizedEmail);
 
-    if (!email || !password) {
+    if (!normalizedEmail || !password) {
       console.log("Missing email or password in request");
       return res.status(400).json({ message: "Email and password are required" });
     }
 
     // Check if the user exists
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
-      console.log("User not found:", email);
+      console.log("User not found:", normalizedEmail);
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
     // Validate the password
-    console.log("Comparing password for user:", email);
+    console.log("Comparing password for user:", normalizedEmail);
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      console.log("Password mismatch for user:", email);
+      console.log("Password mismatch for user:", normalizedEmail);
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
@@ -35,7 +36,7 @@ exports.login = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    console.log("JWT token generated successfully:", token);
+    console.log("JWT token generated successfully");
 
     // Return token and user details
     res.status(200).json({
@@ -48,8 +49,7 @@ exports.login = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Login Error:", error);  // Full error object
+    console.error("Login Error:", error);
     res.status(500).json({ message: "Server error during login", error: error.toString() });
   }
 };
-

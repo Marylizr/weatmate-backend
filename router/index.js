@@ -40,9 +40,6 @@ appRouter.use('/', passwordRouter);
 
 
 
-// Debug middleware for incoming requests
-
-
 appRouter.use((req, res, next) => {
    console.log(`Request received: ${req.method} ${req.url}`);
    next();
