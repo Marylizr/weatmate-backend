@@ -4,6 +4,8 @@ const userRouter = express.Router();
 const { authMiddleware, IsAdmin, requireVerified } = require('../auth/authMiddleware');
 const  authenticateTrainer  = require('../auth/authenticateTrainer');
 
+const uploadPDF = userController.medicalHistoryUpload.single('pdf');
+
 
 // Specific route for the logged-in user
 userRouter.get('/me', authMiddleware, requireVerified, userController.findOne);
@@ -61,7 +63,15 @@ userRouter.get('/:id/user-preferences', authMiddleware, requireVerified, userCon
 userRouter.post('/:id/user-preferences', authMiddleware, requireVerified, userController.addUserPreference);
 
 // Add and fetch medical history
-userRouter.post('/:id/medical-history', authMiddleware, requireVerified, userController.addMedicalHistory);
+
+userRouter.post(
+   '/:id/medical-history',
+   authMiddleware,
+   requireVerified,
+   uploadPDF,
+   userController.addMedicalHistory
+ );
+ 
 userRouter.get('/:id/medical-history', authMiddleware, requireVerified, userController.getMedicalHistory);
 
 module.exports =  userRouter ;

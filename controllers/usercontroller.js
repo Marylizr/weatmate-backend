@@ -7,6 +7,31 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const { google } = require('googleapis');
 const mongoose = require("mongoose");
+// --- PDF upload & ChatGPT analysis deps ---
+const fs        = require('fs');
+const path      = require('path');
+const multer    = require('multer');
+const pdfParse  = require('pdf-parse');
+const { Configuration, OpenAIApi } = require('openai');
+
+// Multer setup: store PDFs under uploads/medicalHistory
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(__dirname, '../uploads/medicalHistory');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `${req.params.id}-${Date.now()}${ext}`);
+  },
+});
+exports.medicalHistoryUpload = multer({ storage });
+
+// OpenAI client
+const openai = new OpenAIApi(new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+}));
 
 
 exports.generateToken = (userId, role, gender) => {
@@ -601,50 +626,84 @@ exports.getSessionNotes = async (req, res) => {
 
 // Controller to handle medical history
 exports.addMedicalHistory = async (req, res) => {
-  console.log('Request Params:', req.params); // Should log the user ID
-  console.log('Request Headers:', req.headers); // Should include Content-Type: application/json
-  console.log('Incoming Request Body:', req.body); // Should contain { history, date }
-
   const { history, date } = req.body;
-
-  if (!history || !date) {
-    console.log('Validation failed:', { history, date });
-    return res.status(400).json({ message: 'History and date are required.' });
-  }
+  const userId = req.params.id;
+  if (!date) return res.status(400).json({ message: 'Date is required.' });
 
   try {
-    const user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+
+    // 1) Get text from body or PDF
+    let text = history?.trim() || '';
+    let pdfUrl;
+    if (req.file) {
+      pdfUrl = `/uploads/medicalHistory/${req.file.filename}`;
+      const buffer = fs.readFileSync(req.file.path);
+      const parsed = await pdfParse(buffer);
+      text = parsed.text;
+    }
+    if (!text) return res.status(400).json({ message: 'Provide history text or upload a PDF.' });
+
+    // 2) Ask GPT for structured analysis
+    const prompt = `
+        You are a medical assistant. A patient record follows:
+
+        """
+        ${text}
+        """
+
+        Extract into JSON:
+        {
+          "summary": "<one-sentence overview>",
+          "conditions": [
+            {
+              "name": "<test or metric>",
+              "value": "<measured value>",
+              "normalRange": "<normal range>",
+              "severity": "<Low|Normal|High>",
+              "recommendation": "<brief recommendation>"
+            }
+          ]
+        }
+        `;
+    const completion = await openai.createCompletion({
+      model: 'gpt-4',
+      prompt,
+      max_tokens: 300,
+      temperature: 0.0,
+    });
+    const raw = completion.data.choices[0].text.trim();
+    let analysis;
+    try {
+      analysis = JSON.parse(raw);
+    } catch {
+      analysis = { summary: raw, conditions: [] };
     }
 
-    user.medicalHistory.push({ history, date });
+    // 3) Save to user.medicalHistory
+    const entry = { history: text, date: new Date(date), pdfUrl, analysis };
+    user.medicalHistory.push(entry);
     await user.save();
-    res.status(201).json({ message: 'Medical record added successfully.', medicalHistory: user.medicalHistory });
+
+    res.status(201).json({ message: 'Medical record added.', medicalHistory: user.medicalHistory });
   } catch (error) {
     console.error('Error adding medical record:', error);
     res.status(500).json({ message: 'Error adding medical record.', error: error.message });
   }
 };
 
-
-
-
-exports.getMedicalHistory = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const user = await User.findById(id).select('medicalHistory');
-    if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
+  exports.getMedicalHistory = async (req, res) => {
+    try {
+      const user = await User.findById(req.params.id).select('medicalHistory');
+      if (!user) return res.status(404).json({ message: 'User not found.' });
+      res.status(200).json(user.medicalHistory);
+    } catch (error) {
+      console.error('Error fetching medical history:', error);
+      res.status(500).json({ message: 'Error fetching medical history.', error: error.message });
     }
+  };
 
-    res.status(200).json(user.medicalHistory);
-  } catch (error) {
-    console.error('Error fetching medical history:', error);
-    res.status(500).json({ message: 'Error fetching medical history.', error: error.message });
-  }
-};
 
 
 // Add or Update User Preferences

@@ -38,7 +38,7 @@ appRouter.use('/goals', goalRouter);
 appRouter.use('/auth', verifyEmailRouter);
 appRouter.use('/menstrualCycle', menstrualCycleRouter);
 appRouter.use('/', passwordRouter);
-appRouter.use('/', medicalAnalysisRouter);
+appRouter.use('/medical-analysis', medicalAnalysisRouter);
 
 
 
