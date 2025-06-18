@@ -18,6 +18,7 @@ const  goalRouter  = require('./goalRouter');
 const   verifyEmailRouter  = require('./authRoutes');
 const menstrualCycleRouter = require('./menstrualCycleRouter');
 const  passwordRouter = require('./resetPasswordRouter');
+const medicalAnalysisRouter = requiere('./medicalAnalysisRouter');
 
 
 appRouter.use('/', loginRouter);
@@ -37,6 +38,7 @@ appRouter.use('/goals', goalRouter);
 appRouter.use('/auth', verifyEmailRouter);
 appRouter.use('/menstrualCycle', menstrualCycleRouter);
 appRouter.use('/', passwordRouter);
+appRouter.use('/', medicalAnalysisRouter);
 
 
 

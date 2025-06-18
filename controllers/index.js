@@ -12,8 +12,9 @@ const preWorkoutController = require('../controllers/preWorkoutController');
 const mealPlanController = require('../controllers/mealPlantController');
 const moodTracker = require('../controllers/moodTrackerController');
 const verifyEmailController = require('../controllers/verifyEmailController');
-const menstrualCycleController = require('../controllers/menstrualCycleController')
-const passwordController = require('../controllers/passwordController')
+const menstrualCycleController = require('../controllers/menstrualCycleController');
+const passwordController = require('../controllers/passwordController');
+const medicalAnalysisController = require('../controllers/medicalAnalysisController');
 
 
 module.exports = {
@@ -32,7 +33,8 @@ module.exports = {
   moodTracker,
   verifyEmailController,
   menstrualCycleController,
-  passwordController
+  passwordController,
+  medicalAnalysisController
  };  
  
  
