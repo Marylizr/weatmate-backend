@@ -1,10 +1,10 @@
 const express = require('express');
 const medicalAnalysisRouter = express.Router();
-const  medicalAnalysisController  = require('../controllers/medicalAnalysisController');
+const  analyzeMedicalHistoryController  = require('../controllers/analyzeMedicalHistoryController');
 
 
 // POST /api/medical-analysis
-medicalAnalysisRouter.post('/', medicalAnalysisController);
+medicalAnalysisRouter.post('/', analyzeMedicalHistoryController.analyzeMedicalHistory);
 
 module.exports = medicalAnalysisRouter;
 
