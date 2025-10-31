@@ -13,6 +13,9 @@ const path      = require('path');
 const multer    = require('multer');
 const pdfParse  = require('pdf-parse');
 const { Configuration, OpenAIApi } = require('openai');
+const OPENAI_API_KEY = require('dotenv').config();
+const { extractTextFromScannedPDF } = require('../utils/pdfOcr');
+
 
 // Multer setup: store PDFs under uploads/medicalHistory
 const storage = multer.diskStorage({
@@ -29,9 +32,13 @@ const storage = multer.diskStorage({
 exports.medicalHistoryUpload = multer({ storage });
 
 // OpenAI client
-const openai = new OpenAIApi(new Configuration({
+
+
+const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
-}));
+});
+const openai = new OpenAIApi(configuration);
+
 
 
 exports.generateToken = (userId, role, gender) => {
@@ -623,87 +630,117 @@ exports.getSessionNotes = async (req, res) => {
 };
 
 
-
-// Controller to handle medical history
 exports.addMedicalHistory = async (req, res) => {
   const { history, date } = req.body;
-  const userId = req.params.id;
-  if (!date) return res.status(400).json({ message: 'Date is required.' });
+  if (!history && !req.file) {
+    return res.status(400).json({ message: 'Either text or a PDF file is required.' });
+  }
 
   try {
-    const user = await User.findById(userId);
+    const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found.' });
 
-    // 1) Get text from body or PDF
-    let text = history?.trim() || '';
-    let pdfUrl;
+    let textToAnalyze = history || '';
+    let pdfUrl = null;
+
     if (req.file) {
+      const uploadDir = path.join(__dirname, '../uploads/medicalHistory');
+      const filePath = path.join(uploadDir, req.file.filename);
       pdfUrl = `/uploads/medicalHistory/${req.file.filename}`;
-      const buffer = fs.readFileSync(req.file.path);
-      const parsed = await pdfParse(buffer);
-      text = parsed.text;
+
+      const fileBuffer = fs.readFileSync(filePath);
+      const parsed = await pdfParse(fileBuffer);
+      textToAnalyze = parsed.text;
+
+      if (!textToAnalyze.trim()) {
+        console.log("⚠️ No se encontró texto legible, usando OCR...");
+        textToAnalyze = await extractTextFromScannedPDF(filePath);
+      }
     }
-    if (!text) return res.status(400).json({ message: 'Provide history text or upload a PDF.' });
 
-    // 2) Ask GPT for structured analysis
-    const prompt = `
-        You are a medical assistant. A patient record follows:
-
-        """
-        ${text}
-        """
-
-        Extract into JSON:
-        {
-          "summary": "<one-sentence overview>",
-          "conditions": [
-            {
-              "name": "<test or metric>",
-              "value": "<measured value>",
-              "normalRange": "<normal range>",
-              "severity": "<Low|Normal|High>",
-              "recommendation": "<brief recommendation>"
-            }
-          ]
-        }
-        `;
-    const completion = await openai.createCompletion({
+    const chat = await openai.createChatCompletion({
       model: 'gpt-4',
-      prompt,
-      max_tokens: 300,
-      temperature: 0.0,
+      messages: [
+        {
+          role: 'system',
+          content: `
+              You are a medical assistant focused on helping personal trainers optimize workouts and nutrition. 
+              
+              From the lab report below, extract ONLY abnormal findings that require attention or may impact training, recovery, or nutrition planning.
+              
+              Return the result strictly as valid JSON:
+              
+              {
+                "summary": "Short summary of the key abnormal findings",
+                "conditions": [
+                  {
+                    "name": "Marker or Condition",
+                    "value": "...",
+                    "normalRange": "...",
+                    "severity": "Low | Moderate | High",
+                    "recommendation": "Brief, practical advice for the personal trainer"
+                  }
+                ]
+              }
+              
+              ⚠️ Only include items in the array if their values are outside the reference range OR clinically relevant (e.g. low HDL, high insulin, anemia, inflammation, etc.). Do NOT include markers that are within the normal range.
+              Respond with only the JSON and nothing else.
+              `
+
+        },
+        { role: 'user', content: textToAnalyze }
+      ],
+      temperature: 0,
+      max_tokens: 800
     });
-    const raw = completion.data.choices[0].text.trim();
-    let analysis;
+
+    const rawText = chat.data.choices[0].message.content;
+    let parsedAnalysis;
+
     try {
-      analysis = JSON.parse(raw);
-    } catch {
-      analysis = { summary: raw, conditions: [] };
+      parsedAnalysis = JSON.parse(rawText);
+    } catch (err) {
+      console.warn("⚠️ OpenAI no devolvió JSON válido. Guardando texto crudo.");
+      parsedAnalysis = {
+        summary: "Could not parse structured analysis.",
+        raw: rawText,
+        conditions: []
+      };
     }
 
-    // 3) Save to user.medicalHistory
-    const entry = { history: text, date: new Date(date), pdfUrl, analysis };
-    user.medicalHistory.push(entry);
+    user.medicalHistory.push({
+      history,
+      date,
+      pdfUrl,
+      analysis: parsedAnalysis
+    });
+
     await user.save();
 
-    res.status(201).json({ message: 'Medical record added.', medicalHistory: user.medicalHistory });
-  } catch (error) {
-    console.error('Error adding medical record:', error);
-    res.status(500).json({ message: 'Error adding medical record.', error: error.message });
+    res.status(201).json({
+      message: 'Medical record added successfully.',
+      medicalHistory: user.medicalHistory
+    });
+  } catch (err) {
+    console.error('addMedicalHistory error:', err.response?.data || err.message || err);
+    res.status(500).json({
+      message: 'Error adding medical record.',
+      error: err.response?.data || err.message || err
+    });
   }
 };
 
-  exports.getMedicalHistory = async (req, res) => {
-    try {
-      const user = await User.findById(req.params.id).select('medicalHistory');
-      if (!user) return res.status(404).json({ message: 'User not found.' });
-      res.status(200).json(user.medicalHistory);
-    } catch (error) {
-      console.error('Error fetching medical history:', error);
-      res.status(500).json({ message: 'Error fetching medical history.', error: error.message });
-    }
-  };
-
+// GET: Get medical history
+exports.getMedicalHistory = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('medicalHistory');
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+    res.status(200).json(user.medicalHistory);
+  } catch (error) {
+    console.error('Error fetching medical history:', error);
+    res.status(500).json({ message: 'Error fetching medical history.', error: error.message });
+  }
+};
 
 
 // Add or Update User Preferences

@@ -36,7 +36,9 @@
     "nodemailer": "^6.9.16",
     "openai": "^3.3.0",
     "pdf-parse": "^1.1.1",
-    "react-calendar": "^4.6.0"
+    "pdf-poppler": "^0.2.1",
+    "react-calendar": "^4.6.0",
+    "tesseract.js": "^6.0.1"
   },
   "devDependencies": {
     "nodemon": "^2.0.20"
