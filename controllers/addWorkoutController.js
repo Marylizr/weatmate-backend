@@ -1,64 +1,71 @@
 // const db = require('./mongo');
-const AddWork = require('../models/addWorkoutModel');
+const AddWork = require("../models/addWorkoutModel");
 
-
-   exports.findAll = async (req, res) =>{
-      res.status(200).json(await AddWork.find());
-   };
-
-   exports.delete = (req,res) => { 
-   const id = req.params.id;
-   AddWork.findByIdAndDelete(id, {}, (error, result) => {
-      if(error){
-         res.status(500).json({error: error.message});
-      } else if(!result){
-         res.status(404);
-      }else{
-         res.status(204).send();
-      }
-   })
+exports.findAll = async (req, res) => {
+  res.status(200).json(await AddWork.find());
 };
 
-   exports.findOne = async (req, res) => {
-      res.status(200).json(await AddWork.findOne(req.params.name));
-   }
+exports.delete = async (req, res) => {
+  const id = req.params.id;
 
-   
-   exports.create = async (req, res) => {
-   const data = req.body;
-   const dataPosted = {
-      type: data.type,
-      workoutName: data.workoutName,
-      description: data.description,
-      reps: data.reps,
-      series: data.series,
-      lifted: data.lifted,
-      picture: data.picture,
-      video: data.video
-   }
-   
-  const newWorkout = new AddWork(dataPosted);
+  try {
+    const deleted = await AddWork.findByIdAndDelete(id);
 
-  await newWorkout.save()
+    if (!deleted) {
+      return res.status(404).json({ error: "Workout not found" });
+    }
 
-  console.log(newWorkout, 'Creating new Workout');
+    return res.status(200).json({ message: "Workout deleted successfully" });
+  } catch (error) {
+    console.error("Delete error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
 
-  res.json({Message: "Your new workout was created Succesfully", newWorkout});
-    
+exports.findOne = async (req, res) => {
+  res.status(200).json(await AddWork.findOne(req.params.name));
+};
+
+exports.create = async (req, res) => {
+  const data = req.body;
+  const dataPosted = {
+    type: data.type,
+    workoutName: data.workoutName,
+    description: data.description,
+    reps: data.reps,
+    series: data.series,
+    lifted: data.lifted,
+    picture: data.picture,
+    video: data.video,
   };
 
+  const newWorkout = new AddWork(dataPosted);
 
-  exports.update = async(req, res) => {
-   const id = req.params.id;
-   const data = req.body;
- 
-   const updatedWorkout = await AddWork.findOneAndUpdate(id, data)
- 
-   res.status(200).json({message: "Your Product has been updated Succesfully", updatedWorkout})
- }
+  await newWorkout.save();
 
+  console.log(newWorkout, "Creating new Workout");
 
+  res.json({ Message: "Your new workout was created Succesfully", newWorkout });
+};
 
+exports.update = async (req, res) => {
+  const id = req.params.id;
+  const data = req.body;
 
+  try {
+    const updatedWorkout = await AddWork.findByIdAndUpdate(id, data, {
+      new: true,
+    });
 
+    if (!updatedWorkout) {
+      return res.status(404).json({ error: "Workout not found" });
+    }
 
+    res
+      .status(200)
+      .json({ message: "Workout updated successfully", updatedWorkout });
+  } catch (error) {
+    console.error("Update error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
