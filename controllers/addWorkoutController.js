@@ -28,6 +28,7 @@ exports.findOne = async (req, res) => {
 
 exports.create = async (req, res) => {
   const data = req.body;
+
   const dataPosted = {
     type: data.type,
     workoutName: data.workoutName,
@@ -39,13 +40,17 @@ exports.create = async (req, res) => {
     video: data.video,
   };
 
-  const newWorkout = new AddWork(dataPosted);
-
-  await newWorkout.save();
-
-  console.log(newWorkout, "Creating new Workout");
-
-  res.json({ Message: "Your new workout was created Succesfully", newWorkout });
+  try {
+    const newWorkout = new AddWork(dataPosted);
+    await newWorkout.save();
+    console.log("Creating new Workout:", newWorkout);
+    res
+      .status(201)
+      .json({ message: "Workout created successfully", newWorkout });
+  } catch (error) {
+    console.error("Create error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 };
 
 exports.update = async (req, res) => {
