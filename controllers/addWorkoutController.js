@@ -1,84 +1,129 @@
-const AddWork = require("../models/addWorkoutModel");
+// controllers/addWorkoutController.js
 
-// GET all
+const AddWork = require("../models/addWorkoutModel");
+const mongoose = require("mongoose");
+
+// GET all workouts
 exports.findAll = async (req, res) => {
   try {
     const workouts = await AddWork.find();
     res.status(200).json(workouts);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch workouts", error });
   }
 };
 
-// GET by ID
+// GET one workout by ID
 exports.findOne = async (req, res) => {
   try {
-    const workout = await AddWork.findById(req.params.id);
-    if (!workout) return res.status(404).json({ message: "Workout not found" });
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid workout ID" });
+    }
+    const workout = await AddWork.findById(id);
+    if (!workout) {
+      return res.status(404).json({ message: "Workout not found" });
+    }
     res.status(200).json(workout);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch workout", error });
   }
 };
 
-// POST create
+// CREATE workout
 exports.create = async (req, res) => {
   try {
-    const data = req.body;
-    const dataPosted = {
-      type: data.type,
-      workoutName: data.workoutName,
-      description: data.description,
-      reps: data.reps,
-      series: data.series,
-      lifted: data.lifted || 0,
-      picture: data.picture,
-      video: data.video,
-    };
+    const {
+      type,
+      workoutName,
+      description,
+      reps,
+      series,
+      lifted,
+      picture,
+      video,
+      workoutLevel,
+      trainerId,
+      isGeneral,
+    } = req.body;
 
-    const newWorkout = new AddWork(dataPosted);
-    await newWorkout.save();
-
-    console.log("Created new Workout:", newWorkout);
-    res.status(201).json({
-      message: "Workout created successfully",
-      newWorkout,
+    const newWorkout = new AddWork({
+      type,
+      workoutName,
+      description,
+      reps,
+      series,
+      lifted: lifted || 0,
+      picture,
+      video,
+      workoutLevel,
+      trainerId: trainerId,
+      isGeneral: isGeneral || false,
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+
+    const savedWorkout = await newWorkout.save();
+    res.status(201).json(savedWorkout);
+  } catch (error) {
+    res.status(400).json({ message: "Failed to create workout", error });
   }
 };
 
-// DELETE
-exports.delete = async (req, res) => {
-  try {
-    const id = req.params.id;
-    const result = await AddWork.findByIdAndDelete(id);
-    if (!result) return res.status(404).json({ message: "Workout not found" });
-    res.status(204).send();
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// UPDATE
+// UPDATE workout (only creator or admin can update)
 exports.update = async (req, res) => {
   try {
-    const id = req.params.id;
-    const data = req.body;
+    const { id } = req.params;
+    const updates = req.body;
+    const userId = req.user?._id;
+    const userRole = req.user?.role;
 
-    const updatedWorkout = await AddWork.findByIdAndUpdate(id, data, {
+    const workout = await AddWork.findById(id);
+    if (!workout) {
+      return res.status(404).json({ message: "Workout not found" });
+    }
+
+    if (
+      workout.trainerId?.toString() !== userId.toString() &&
+      userRole !== "admin"
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized to update this workout" });
+    }
+
+    const updatedWorkout = await AddWork.findByIdAndUpdate(id, updates, {
       new: true,
     });
 
-    if (!updatedWorkout)
-      return res.status(404).json({ message: "Workout not found" });
+    res.status(200).json(updatedWorkout);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update workout", error });
+  }
+};
 
-    res.status(200).json({
-      message: "Workout updated successfully",
-      updatedWorkout,
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+// DELETE workout (only creator or admin can delete)
+exports.delete = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?._id;
+    const userRole = req.user?.role;
+
+    const workout = await AddWork.findById(id);
+    if (!workout) {
+      return res.status(404).json({ message: "Workout not found" });
+    }
+
+    if (
+      workout.trainerId?.toString() !== userId.toString() &&
+      userRole !== "admin"
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized to delete this workout" });
+    }
+
+    await workout.deleteOne();
+    res.status(200).json({ message: "Workout deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete workout", error });
   }
 };
