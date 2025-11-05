@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -13,6 +14,23 @@ if (process.env.NODE_ENV === 'production') {
   app.use((req, res, next) => {
     if (req.headers['x-forwarded-proto'] !== 'https') {
       return res.redirect('https://' + req.headers.host + req.url);
+=======
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const connectToDatabase = require("./mongo/index"); // Import the MongoDB connection
+const app = express();
+const port = process.env.PORT || 3001;
+
+if (!port) {
+  console.error("PORT environment variable is not defined.");
+  process.exit(1); // Exit if PORT isn't set
+}
+if (process.env.NODE_ENV === "production") {
+  app.use((req, res, next) => {
+    if (req.headers["x-forwarded-proto"] !== "https") {
+      return res.redirect("https://" + req.headers.host + req.url);
+>>>>>>> main
     }
     next();
   });
@@ -21,9 +39,15 @@ if (process.env.NODE_ENV === 'production') {
 // Connect to MongoDB
 connectToDatabase();
 
+<<<<<<< HEAD
 // Body parsers
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+=======
+// Middleware
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
+>>>>>>> main
 
 // CORS setup
 const allowedOrigins = [
@@ -31,6 +55,7 @@ const allowedOrigins = [
   'http://localhost:3000',         // React dev server
 ];
 
+<<<<<<< HEAD
 app.use(cors({
   origin: (origin, callback) => {
     // allow requests with no origin like mobile apps or curl
@@ -52,6 +77,21 @@ app.use('/', userRouter);
 
 app.get('/', (req, res) => {
   res.status(200).json({ message: 'SweatMate Backend is Running!' });
+=======
+const corsOptions = {
+  origin: process.env.BASE_URL || "https://sweatmateapp.netlify.app",
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+app.use(cors(corsOptions));
+app.options("*", cors()); // Handle preflight requests
+
+// Routes
+const appRouter = require("./router");
+app.use("/", appRouter);
+
+app.get("/", (req, res) => {
+  res.status(200).json({ message: "SweatMate Backend is Running!" });
+>>>>>>> main
 });
 
 app.listen(port, () => {
