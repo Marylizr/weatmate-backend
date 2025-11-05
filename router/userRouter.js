@@ -64,13 +64,7 @@ userRouter.post('/:id/user-preferences', authMiddleware, requireVerified, userCo
 
 // Add and fetch medical history
 
-userRouter.post(
-   '/:id/medical-history',
-   authMiddleware,
-   requireVerified,
-   uploadPDF,
-   userController.addMedicalHistory
- );
+userRouter.post('/:id/medical-history', authMiddleware, requireVerified, uploadPDF, userController.addMedicalHistory);
  
 userRouter.get('/:id/medical-history', authMiddleware, requireVerified, userController.getMedicalHistory);
 
