@@ -2,7 +2,7 @@ const express = require("express");
 const addWorkoutController = require("../controllers/addWorkoutController");
 const addWorkoutRouter = express.Router();
 
-const { authMiddleware } = require("../middleware/authMiddleware");
+const { authMiddleware } = require("../auth/authMiddleware");
 
 addWorkoutRouter.get("/", addWorkoutController.findAll);
 addWorkoutRouter.get("/:id", addWorkoutController.findOne);
