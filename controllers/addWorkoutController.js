@@ -1,64 +1,129 @@
-// const db = require('./mongo');
-const AddWork = require('../models/addWorkoutModel');
+// controllers/addWorkoutController.js
 
+const AddWork = require("../models/addWorkoutModel");
+const mongoose = require("mongoose");
 
-   exports.findAll = async (req, res) =>{
-      res.status(200).json(await AddWork.find());
-   };
-
-   exports.delete = (req,res) => { 
-   const id = req.params.id;
-   AddWork.findByIdAndDelete(id, {}, (error, result) => {
-      if(error){
-         res.status(500).json({error: error.message});
-      } else if(!result){
-         res.status(404);
-      }else{
-         res.status(204).send();
-      }
-   })
+// GET all workouts
+exports.findAll = async (req, res) => {
+  try {
+    const workouts = await AddWork.find();
+    res.status(200).json(workouts);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch workouts", error });
+  }
 };
 
-   exports.findOne = async (req, res) => {
-      res.status(200).json(await AddWork.findOne(req.params.name));
-   }
+// GET one workout by ID
+exports.findOne = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid workout ID" });
+    }
+    const workout = await AddWork.findById(id);
+    if (!workout) {
+      return res.status(404).json({ message: "Workout not found" });
+    }
+    res.status(200).json(workout);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch workout", error });
+  }
+};
 
-   
-   exports.create = async (req, res) => {
-   const data = req.body;
-   const dataPosted = {
-      type: data.type,
-      workoutName: data.workoutName,
-      description: data.description,
-      reps: data.reps,
-      series: data.series,
-      lifted: data.lifted,
-      picture: data.picture,
-      video: data.video
-   }
-   
-  const newWorkout = new AddWork(dataPosted);
+// CREATE workout
+exports.create = async (req, res) => {
+  try {
+    const {
+      type,
+      workoutName,
+      description,
+      reps,
+      series,
+      lifted,
+      picture,
+      video,
+      workoutLevel,
+      trainerId,
+      isGeneral,
+    } = req.body;
 
-  await newWorkout.save()
+    const newWorkout = new AddWork({
+      type,
+      workoutName,
+      description,
+      reps,
+      series,
+      lifted: lifted || 0,
+      picture,
+      video,
+      workoutLevel,
+      trainerId: trainerId,
+      isGeneral: isGeneral || false,
+    });
 
-  console.log(newWorkout, 'Creating new Workout');
+    const savedWorkout = await newWorkout.save();
+    res.status(201).json(savedWorkout);
+  } catch (error) {
+    res.status(400).json({ message: "Failed to create workout", error });
+  }
+};
 
-  res.json({Message: "Your new workout was created Succesfully", newWorkout});
-    
-  };
+// UPDATE workout (only creator or admin can update)
+exports.update = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    const userId = req.user?._id;
+    const userRole = req.user?.role;
 
+    const workout = await AddWork.findById(id);
+    if (!workout) {
+      return res.status(404).json({ message: "Workout not found" });
+    }
 
-  exports.update = async(req, res) => {
-   const id = req.params.id;
-   const data = req.body;
- 
-   const updatedWorkout = await AddWork.findOneAndUpdate(id, data)
- 
-   res.status(200).json({message: "Your Product has been updated Succesfully", updatedWorkout})
- }
+    if (
+      workout.trainerId?.toString() !== userId.toString() &&
+      userRole !== "admin"
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized to update this workout" });
+    }
 
+    const updatedWorkout = await AddWork.findByIdAndUpdate(id, updates, {
+      new: true,
+    });
 
+    res.status(200).json(updatedWorkout);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update workout", error });
+  }
+};
 
+// DELETE workout (only creator or admin can delete)
+exports.delete = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?._id;
+    const userRole = req.user?.role;
 
+    const workout = await AddWork.findById(id);
+    if (!workout) {
+      return res.status(404).json({ message: "Workout not found" });
+    }
 
+    if (
+      workout.trainerId?.toString() !== userId.toString() &&
+      userRole !== "admin"
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized to delete this workout" });
+    }
 
+    await workout.deleteOne();
+    res.status(200).json({ message: "Workout deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete workout", error });
+  }
+};
