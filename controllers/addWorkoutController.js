@@ -104,16 +104,29 @@ exports.update = async (req, res) => {
 exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user?._id;
-    const userRole = req.user?.role;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid workout ID" });
+    }
 
     const workout = await AddWork.findById(id);
     if (!workout) {
       return res.status(404).json({ message: "Workout not found" });
     }
 
+    // Verifica si hay usuario autenticado
+    const userId = req.user?._id;
+    const userRole = req.user?.role;
+
+    if (!userId && !userRole) {
+      return res
+        .status(401)
+        .json({ message: "Unauthorized: user not authenticated" });
+    }
+
+    // Solo el creador o un admin puede eliminar
     if (
-      workout.trainerId?.toString() !== userId.toString() &&
+      workout.trainerId?.toString() !== userId?.toString() &&
       userRole !== "admin"
     ) {
       return res
@@ -122,8 +135,11 @@ exports.delete = async (req, res) => {
     }
 
     await workout.deleteOne();
-    res.status(200).json({ message: "Workout deleted successfully" });
+    return res.status(200).json({ message: "Workout deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Failed to delete workout", error });
+    console.error(" Error deleting workout:", error);
+    return res
+      .status(500)
+      .json({ message: "Failed to delete workout", error: error.message });
   }
 };
