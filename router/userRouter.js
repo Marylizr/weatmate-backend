@@ -114,6 +114,6 @@ userRouter.get(
   userController.getMedicalHistory
 );
 
-userRouter.post("/:id/nutrition-history", addNutritionHistory);
+userRouter.post("/:id/nutrition-history", userController.addNutritionHistory);
 
 module.exports = userRouter;

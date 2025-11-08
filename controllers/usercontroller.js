@@ -330,12 +330,9 @@ exports.createUserByAdmin = async (req, res) => {
       password.trim().length < 8
     ) {
       console.log("Error: Invalid password input.");
-      return res
-        .status(400)
-        .json({
-          message:
-            "Password is required and must be at least 8 characters long.",
-        });
+      return res.status(400).json({
+        message: "Password is required and must be at least 8 characters long.",
+      });
     }
 
     console.log("Checking for existing user with email:", email);
@@ -452,12 +449,9 @@ exports.create = async (req, res) => {
       password.trim().length < 8
     ) {
       console.log("Error: Invalid password input.");
-      return res
-        .status(400)
-        .json({
-          message:
-            "Password is required and must be at least 8 characters long.",
-        });
+      return res.status(400).json({
+        message: "Password is required and must be at least 8 characters long.",
+      });
     }
 
     console.log("Checking for existing user with email:", email);
@@ -567,12 +561,10 @@ exports.update = async (req, res) => {
 
     if (id) {
       if (!loggedInUser || loggedInUser.role !== "admin") {
-        return res
-          .status(403)
-          .json({
-            message:
-              "Access denied. Only admins can update other users' profiles.",
-          });
+        return res.status(403).json({
+          message:
+            "Access denied. Only admins can update other users' profiles.",
+        });
       }
       userToUpdate = await User.findById(id);
       if (!userToUpdate) {
@@ -606,12 +598,10 @@ exports.update = async (req, res) => {
 
     console.log("User Updated Successfully:", userToUpdate);
 
-    res
-      .status(200)
-      .json({
-        message: "User has been updated successfully",
-        updatedUser: userToUpdate,
-      });
+    res.status(200).json({
+      message: "User has been updated successfully",
+      updatedUser: userToUpdate,
+    });
   } catch (err) {
     console.error("Error updating user:", err.message);
     res
@@ -640,12 +630,10 @@ exports.addSessionNote = async (req, res) => {
 
     user.sessionNotes.push({ note, date });
     await user.save();
-    res
-      .status(201)
-      .json({
-        message: "Session note added successfully.",
-        sessionNotes: user.sessionNotes,
-      });
+    res.status(201).json({
+      message: "Session note added successfully.",
+      sessionNotes: user.sessionNotes,
+    });
   } catch (error) {
     console.error("Error adding session note:", error);
     res
@@ -692,12 +680,10 @@ exports.addMedicalHistory = async (req, res) => {
 
     user.medicalHistory.push({ history, date });
     await user.save();
-    res
-      .status(201)
-      .json({
-        message: "Medical record added successfully.",
-        medicalHistory: user.medicalHistory,
-      });
+    res.status(201).json({
+      message: "Medical record added successfully.",
+      medicalHistory: user.medicalHistory,
+    });
   } catch (error) {
     console.error("Error adding medical record:", error);
     res
@@ -718,12 +704,10 @@ exports.getMedicalHistory = async (req, res) => {
     res.status(200).json(user.medicalHistory);
   } catch (error) {
     console.error("Error fetching medical history:", error);
-    res
-      .status(500)
-      .json({
-        message: "Error fetching medical history.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error fetching medical history.",
+      error: error.message,
+    });
   }
 };
 
@@ -750,12 +734,10 @@ exports.addUserPreference = async (req, res) => {
 
     user.preferences.push({ preference, date });
     await user.save();
-    res
-      .status(201)
-      .json({
-        message: "Preference added successfully.",
-        preferences: user.preferences,
-      });
+    res.status(201).json({
+      message: "Preference added successfully.",
+      preferences: user.preferences,
+    });
   } catch (error) {
     console.error("Error adding user preference:", error);
     res
@@ -776,43 +758,10 @@ exports.getUserPreferences = async (req, res) => {
     res.status(200).json(user.preferences);
   } catch (error) {
     console.error("Error fetching medical history:", error);
-    res
-      .status(500)
-      .json({
-        message: "Error fetching medical history.",
-        error: error.message,
-      });
-  }
-};
-
-// Add Nutrition History
-exports.addNutritionHistory = async (req, res) => {
-  try {
-    const { id } = req.params; // user ID
-    const { calories, protein, carbs, fats, goal } = req.body;
-
-    const user = await User.findById(id);
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    const newEntry = {
-      date: new Date(),
-      calories,
-      protein,
-      carbs,
-      fats,
-      goal,
-    };
-
-    user.nutritionHistory.push(newEntry);
-    await user.save();
-
-    res.status(200).json({
-      message: "Nutrition history updated successfully",
-      nutritionHistory: user.nutritionHistory,
+    res.status(500).json({
+      message: "Error fetching medical history.",
+      error: error.message,
     });
-  } catch (error) {
-    console.error("Error adding nutrition history:", error);
-    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
@@ -867,5 +816,36 @@ exports.registerUser = async (req, res) => {
     res
       .status(500)
       .json({ message: "Error registering user.", error: err.message });
+  }
+};
+
+// Add Nutrition History
+exports.addNutritionHistory = async (req, res) => {
+  try {
+    const { id } = req.params; // user ID
+    const { calories, protein, carbs, fats, goal } = req.body;
+
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const newEntry = {
+      date: new Date(),
+      calories,
+      protein,
+      carbs,
+      fats,
+      goal,
+    };
+
+    user.nutritionHistory.push(newEntry);
+    await user.save();
+
+    res.status(200).json({
+      message: "Nutrition history updated successfully",
+      nutritionHistory: user.nutritionHistory,
+    });
+  } catch (error) {
+    console.error("Error adding nutrition history:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };

@@ -1,8 +1,14 @@
 const Goal = require("../models/GoalModel");
 
-//  Get User Goals
+// Helper para loggear solo en desarrollo
+const isDev = process.env.NODE_ENV !== "production";
+const devLog = (...args) => {
+  if (isDev) console.log("[GOAL CONTROLLER]", ...args);
+};
+
+// Obtener todas las metas de un usuario
 exports.getUserGoals = async (req, res) => {
-  const { id } = req.query; // frontend envía ?id=${user._id}
+  const { id } = req.query;
 
   if (!id) {
     return res.status(400).json({ message: "Missing userId parameter" });
@@ -10,16 +16,18 @@ exports.getUserGoals = async (req, res) => {
 
   try {
     const goals = await Goal.find({ userId: id });
+    devLog("Fetched goals:", goals.length);
     return res.status(200).json(goals);
   } catch (error) {
+    devLog("Error fetching goals:", error.message);
     return res.status(500).json({
       message: "Unable to retrieve goals",
-      error: error.message,
+      error: isDev ? error.message : undefined,
     });
   }
 };
 
-//  Create New Goal
+//  Crear una nueva meta
 exports.createGoal = async (req, res) => {
   const {
     userId,
@@ -30,6 +38,8 @@ exports.createGoal = async (req, res) => {
     personalNotes,
     measure,
   } = req.body;
+
+  devLog("Received new goal payload:", req.body);
 
   if (!userId || !goalType || targetValue === undefined || !measure) {
     return res.status(400).json({
@@ -49,19 +59,20 @@ exports.createGoal = async (req, res) => {
       personalNotes: personalNotes || [],
     });
 
-    res.status(201).json({
-      message: "Goal created successfully",
-      goal: newGoal,
-    });
+    devLog("Goal created:", newGoal._id);
+    return res
+      .status(201)
+      .json({ message: "Goal created successfully", goal: newGoal });
   } catch (error) {
-    res.status(500).json({
+    devLog("Error creating goal:", error.message);
+    return res.status(500).json({
       message: "Failed to create goal",
-      error: error.message,
+      error: isDev ? error.message : undefined,
     });
   }
 };
 
-//  Update Progress
+// Actualizar progreso de una meta
 exports.updateGoalProgress = async (req, res) => {
   const { goalId } = req.params;
   const { currentValue } = req.body;
@@ -77,7 +88,7 @@ exports.updateGoalProgress = async (req, res) => {
     goal.currentValue = currentValue;
     goal.progressHistory.push({ value: currentValue, date: new Date() });
 
-    // auto-mark if reached
+    // Si se alcanzó la meta, marcar milestone
     if (currentValue >= goal.targetValue) {
       goal.milestones.push({
         milestoneValue: goal.targetValue,
@@ -86,19 +97,20 @@ exports.updateGoalProgress = async (req, res) => {
     }
 
     const updatedGoal = await goal.save();
-    res.status(200).json({
-      message: "Goal progress updated",
-      goal: updatedGoal,
-    });
+    devLog("Progress updated for goal:", goalId);
+    return res
+      .status(200)
+      .json({ message: "Goal progress updated", goal: updatedGoal });
   } catch (error) {
-    res.status(500).json({
+    devLog("Error updating goal progress:", error.message);
+    return res.status(500).json({
       message: "Unable to update goal progress",
-      error: error.message,
+      error: isDev ? error.message : undefined,
     });
   }
 };
 
-//  Update Milestone
+//  Actualizar un milestone
 exports.updateGoalMilestone = async (req, res) => {
   const { goalId } = req.params;
   const { milestoneValue, achievedAt, note } = req.body;
@@ -113,41 +125,45 @@ exports.updateGoalMilestone = async (req, res) => {
     const goal = await Goal.findById(goalId);
     if (!goal) return res.status(404).json({ message: "Goal not found" });
 
-    const existing = goal.milestones.findIndex(
+    const existingIndex = goal.milestones.findIndex(
       (m) => m.milestoneValue === milestoneValue
     );
 
-    if (existing > -1) {
-      goal.milestones[existing] = { milestoneValue, achievedAt, note };
+    if (existingIndex > -1) {
+      goal.milestones[existingIndex] = { milestoneValue, achievedAt, note };
     } else {
       goal.milestones.push({ milestoneValue, achievedAt, note });
     }
 
     const updatedGoal = await goal.save();
-    res.status(200).json({
-      message: "Milestone updated successfully",
-      goal: updatedGoal,
-    });
+    devLog("Milestone updated for goal:", goalId);
+    return res
+      .status(200)
+      .json({ message: "Milestone updated successfully", goal: updatedGoal });
   } catch (error) {
-    res.status(500).json({
+    devLog("Error updating milestone:", error.message);
+    return res.status(500).json({
       message: "Unable to update milestone",
-      error: error.message,
+      error: isDev ? error.message : undefined,
     });
   }
 };
 
-//  Delete Goal
+//  Eliminar una meta
 exports.deleteGoal = async (req, res) => {
   try {
-    const result = await Goal.findByIdAndDelete(req.params.goalId);
-    if (!result) {
+    const deletedGoal = await Goal.findByIdAndDelete(req.params.goalId);
+    if (!deletedGoal) {
       return res.status(404).json({ message: "Goal not found" });
     }
-    res.status(204).send();
+
+    devLog("Deleted goal:", req.params.goalId);
+    return res.status(204).send();
   } catch (error) {
-    res.status(500).json({
+    devLog("Error deleting goal:", error.message);
+    return res.status(500).json({
       message: "Unable to delete goal",
-      error: error.message,
+      error: isDev ? error.message : undefined,
     });
   }
 };
