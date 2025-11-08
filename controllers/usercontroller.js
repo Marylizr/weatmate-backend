@@ -1,13 +1,12 @@
-require('dotenv').config();
-const User = require('../models/userModel');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+require("dotenv").config();
+const User = require("../models/userModel");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const { validationResult } = require("express-validator");
-const crypto = require('crypto');
-const nodemailer = require('nodemailer');
-const { google } = require('googleapis');
+const crypto = require("crypto");
+const nodemailer = require("nodemailer");
+const { google } = require("googleapis");
 const mongoose = require("mongoose");
-
 
 exports.generateToken = (userId, role, gender) => {
   // Generate a JWT with the user ID, role, and gender
@@ -17,8 +16,6 @@ exports.generateToken = (userId, role, gender) => {
     { expiresIn: "1h" } // Token expires in 1 hour
   );
 };
-
-
 
 exports.findOne = async (req, res) => {
   try {
@@ -43,7 +40,7 @@ exports.findOne = async (req, res) => {
       specializations: user.specializations,
       bio: user.bio,
       location: user.location,
-      trainerId:user.trainerId,
+      trainerId: user.trainerId,
     });
   } catch (error) {
     console.error("Error fetching user:", error);
@@ -51,48 +48,55 @@ exports.findOne = async (req, res) => {
   }
 };
 
-
 exports.findAll = async (req, res) => {
   try {
-    const users = await User.find().select('-password');
+    const users = await User.find().select("-password");
     res.status(200).json(users);
   } catch (err) {
-    res.status(500).json({ message: "Unable to retrieve users", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Unable to retrieve users", error: err.message });
   }
 };
 
 exports.getAllTrainers = async (req, res) => {
   try {
-    const trainers = await User.find({ role: 'personal-trainer' }).select('name email _id');
+    const trainers = await User.find({ role: "personal-trainer" }).select(
+      "name email _id"
+    );
     res.status(200).json(trainers);
   } catch (error) {
-    res.status(500).json({ message: 'Unable to retrieve trainers', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Unable to retrieve trainers", error: error.message });
   }
 };
 
-
-
 exports.findOneName = async (req, res) => {
   try {
-    const userData = await User.findById(req.params.id).select('name');
+    const userData = await User.findById(req.params.id).select("name");
     if (!userData) {
       return res.status(404).json({ message: "User not found" });
     }
     res.status(200).json(userData.name);
   } catch (err) {
-    res.status(500).json({ message: "Unable to retrieve user name", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Unable to retrieve user name", error: err.message });
   }
 };
 
 exports.findOneEmail = async (req, res) => {
   try {
-    const userData = await User.findById(req.params.id).select('email');
+    const userData = await User.findById(req.params.id).select("email");
     if (!userData) {
       return res.status(404).json({ message: "User not found" });
     }
     res.status(200).json(userData.email);
   } catch (err) {
-    res.status(500).json({ message: "Unable to retrieve user email", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Unable to retrieve user email", error: err.message });
   }
 };
 
@@ -115,11 +119,11 @@ exports.findOneId = async (req, res) => {
     }
   } catch (err) {
     console.error("Error retrieving user:", err.message);
-    res.status(500).json({ message: "Unable to retrieve user", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Unable to retrieve user", error: err.message });
   }
 };
-
-  
 
 //AUTH
 
@@ -131,18 +135,17 @@ const oauth2Client = new google.auth.OAuth2(
 
 // Generate Google authorization URL
 const authUrl = oauth2Client.generateAuthUrl({
-  access_type: 'offline',
-  prompt: 'consent',
-  scope: ['https://www.googleapis.com/auth/gmail.send'],
+  access_type: "offline",
+  prompt: "consent",
+  scope: ["https://www.googleapis.com/auth/gmail.send"],
 });
-
 
 // OAuth2 callback for exchanging authorization code
 exports.oauth2callback = async (req, res) => {
   const { code } = req.query;
 
   if (!code) {
-    return res.status(400).send('Authorization code not provided.');
+    return res.status(400).send("Authorization code not provided.");
   }
 
   try {
@@ -152,13 +155,15 @@ exports.oauth2callback = async (req, res) => {
     if (tokens.refresh_token) {
       process.env.OAUTH_REFRESH_TOKEN = tokens.refresh_token;
     } else {
-      console.warn('No refresh token received. Ensure "prompt=consent" is used in authUrl.');
+      console.warn(
+        'No refresh token received. Ensure "prompt=consent" is used in authUrl.'
+      );
     }
 
-    return res.status(200).send('Authorization successful! Tokens acquired.');
+    return res.status(200).send("Authorization successful! Tokens acquired.");
   } catch (error) {
-    console.error('Error exchanging code for tokens:', error.message);
-    res.status(500).send('Failed to exchange code for tokens.');
+    console.error("Error exchanging code for tokens:", error.message);
+    res.status(500).send("Failed to exchange code for tokens.");
   }
 };
 
@@ -166,7 +171,9 @@ exports.oauth2callback = async (req, res) => {
 async function createTransporter() {
   try {
     if (!process.env.OAUTH_REFRESH_TOKEN) {
-      throw new Error("Refresh token is missing. Reauthorize the app to obtain it.");
+      throw new Error(
+        "Refresh token is missing. Reauthorize the app to obtain it."
+      );
     }
 
     oauth2Client.setCredentials({
@@ -176,12 +183,12 @@ async function createTransporter() {
     const { token: accessToken } = await oauth2Client.getAccessToken();
 
     return nodemailer.createTransport({
-      host: 'smtp.gmail.com',
+      host: "smtp.gmail.com",
       secure: true,
-      service: 'gmail',
+      service: "gmail",
       auth: {
-        user:process.env.GOOGLE_EMAIL_USER,
-        pass:process.env.GOOGLE_EMAIL_PASSWORD,
+        user: process.env.GOOGLE_EMAIL_USER,
+        pass: process.env.GOOGLE_EMAIL_PASSWORD,
         accessToken,
       },
     });
@@ -191,14 +198,14 @@ async function createTransporter() {
   }
 }
 
-
-
 // Confirm email verification
 exports.verifyEmail = async (req, res) => {
   const { token } = req.query;
 
   if (!token) {
-    return res.status(400).json({ success: false, message: "Token is required." });
+    return res
+      .status(400)
+      .json({ success: false, message: "Token is required." });
   }
 
   try {
@@ -207,20 +214,26 @@ exports.verifyEmail = async (req, res) => {
 
     // Ensure we use `_id` for MongoDB lookup
     const user = await User.findById(decoded.userId);
-    
+
     if (!user) {
       console.error(`User not found for ID: ${decoded.userId}`);
-      return res.status(404).json({ success: false, message: "User not found." });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found." });
     }
 
     if (user.isVerified) {
-      return res.status(200).json({ success: true, message: "Email is already verified." });
+      return res
+        .status(200)
+        .json({ success: true, message: "Email is already verified." });
     }
 
     user.isVerified = true;
     await user.save();
 
-    return res.status(200).json({ success: true, message: "Email verified successfully!" });
+    return res
+      .status(200)
+      .json({ success: true, message: "Email verified successfully!" });
   } catch (error) {
     console.error("Error verifying token:", error);
 
@@ -231,10 +244,11 @@ exports.verifyEmail = async (req, res) => {
       });
     }
 
-    return res.status(400).json({ success: false, message: "Invalid or expired token." });
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid or expired token." });
   }
 };
-
 
 // Send verification email
 exports.sendVerificationEmail = async (user) => {
@@ -243,7 +257,9 @@ exports.sendVerificationEmail = async (user) => {
     return false;
   }
 
-  const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+  const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+    expiresIn: "1d",
+  });
   const verificationLink = `${process.env.BASE_URL}/verify-email?token=${token}`;
 
   const mailOptions = {
@@ -268,15 +284,19 @@ exports.sendVerificationEmail = async (user) => {
   }
 };
 
-
 //CREATE
 exports.createUserByAdmin = async (req, res) => {
-  console.log("Checking `req.user` inside `createUserByAdmin` function:", req.user);
+  console.log(
+    "Checking `req.user` inside `createUserByAdmin` function:",
+    req.user
+  );
 
   try {
     if (!req.user || req.user.role !== "admin") {
       console.log("Unauthorized: Only admins can create users.");
-      return res.status(403).json({ message: "Unauthorized: Only admins can create users." });
+      return res
+        .status(403)
+        .json({ message: "Unauthorized: Only admins can create users." });
     }
 
     console.log("Incoming Request Body:", req.body);
@@ -304,9 +324,18 @@ exports.createUserByAdmin = async (req, res) => {
       sessionNotes,
     } = req.body;
 
-    if (!password || typeof password !== "string" || password.trim().length < 8) {
+    if (
+      !password ||
+      typeof password !== "string" ||
+      password.trim().length < 8
+    ) {
       console.log("Error: Invalid password input.");
-      return res.status(400).json({ message: "Password is required and must be at least 8 characters long." });
+      return res
+        .status(400)
+        .json({
+          message:
+            "Password is required and must be at least 8 characters long.",
+        });
     }
 
     console.log("Checking for existing user with email:", email);
@@ -332,7 +361,8 @@ exports.createUserByAdmin = async (req, res) => {
     const assignedRole = allowedRoles.includes(role) ? role : "basic";
 
     // Automatically verify admins and personal trainers
-    const isVerified = assignedRole === "admin" || assignedRole === "personal-trainer";
+    const isVerified =
+      assignedRole === "admin" || assignedRole === "personal-trainer";
 
     console.log("Hashing Password...");
     const passwordHashed = await bcrypt.hash(password.trim(), 10);
@@ -359,7 +389,15 @@ exports.createUserByAdmin = async (req, res) => {
     };
 
     if (assignedRole === "personal-trainer") {
-      newUserData.personalTrainerInfo = { name, email, degree, experience, specializations, bio, location };
+      newUserData.personalTrainerInfo = {
+        name,
+        email,
+        degree,
+        experience,
+        specializations,
+        bio,
+        location,
+      };
     }
 
     console.log("Creating User in Database...");
@@ -368,7 +406,9 @@ exports.createUserByAdmin = async (req, res) => {
     console.log("User Successfully Created:", newUser);
 
     console.log("Generating JWT Token...");
-    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
     console.log("JWT Token Created Successfully:", token);
 
     res.status(201).json({
@@ -382,10 +422,11 @@ exports.createUserByAdmin = async (req, res) => {
     });
   } catch (err) {
     console.error("Error creating user:", err);
-    res.status(500).json({ message: "Unable to create user", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Unable to create user", error: err.message });
   }
 };
-
 
 // Create a new user
 
@@ -405,9 +446,18 @@ exports.create = async (req, res) => {
       fitness_level,
     } = req.body;
 
-    if (!password || typeof password !== "string" || password.trim().length < 8) {
+    if (
+      !password ||
+      typeof password !== "string" ||
+      password.trim().length < 8
+    ) {
       console.log("Error: Invalid password input.");
-      return res.status(400).json({ message: "Password is required and must be at least 8 characters long." });
+      return res
+        .status(400)
+        .json({
+          message:
+            "Password is required and must be at least 8 characters long.",
+        });
     }
 
     console.log("Checking for existing user with email:", email);
@@ -458,7 +508,9 @@ exports.create = async (req, res) => {
     console.log("User Successfully Created:", newUser);
 
     console.log("Generating JWT Token...");
-    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
     console.log("JWT Token Created Successfully:", token);
 
     console.log("Sending Verification Email...");
@@ -476,15 +528,16 @@ exports.create = async (req, res) => {
       id: newUser._id,
       role: newUser.role,
       name: newUser.name,
-      message: "Account created successfully. Please verify your email to activate your account.",
+      message:
+        "Account created successfully. Please verify your email to activate your account.",
     });
   } catch (err) {
     console.error("Error creating user:", err);
-    res.status(500).json({ message: "Unable to create user", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Unable to create user", error: err.message });
   }
 };
-
-
 
 exports.delete = async (req, res) => {
   try {
@@ -492,7 +545,9 @@ exports.delete = async (req, res) => {
     await User.deleteOne({ _id: id });
     res.status(200).json({ message: "User was deleted successfully" });
   } catch (err) {
-    res.status(500).json({ message: "Unable to delete user", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Unable to delete user", error: err.message });
   }
 };
 
@@ -512,7 +567,12 @@ exports.update = async (req, res) => {
 
     if (id) {
       if (!loggedInUser || loggedInUser.role !== "admin") {
-        return res.status(403).json({ message: "Access denied. Only admins can update other users' profiles." });
+        return res
+          .status(403)
+          .json({
+            message:
+              "Access denied. Only admins can update other users' profiles.",
+          });
       }
       userToUpdate = await User.findById(id);
       if (!userToUpdate) {
@@ -526,7 +586,10 @@ exports.update = async (req, res) => {
 
     if (email && email !== userToUpdate.email) {
       const existingUser = await User.findOne({ email });
-      if (existingUser && existingUser._id.toString() !== userToUpdate._id.toString()) {
+      if (
+        existingUser &&
+        existingUser._id.toString() !== userToUpdate._id.toString()
+      ) {
         return res.status(409).json({ message: "Email already in use" });
       }
       updateData.email = email;
@@ -543,135 +606,161 @@ exports.update = async (req, res) => {
 
     console.log("User Updated Successfully:", userToUpdate);
 
-    res.status(200).json({ message: "User has been updated successfully", updatedUser: userToUpdate });
+    res
+      .status(200)
+      .json({
+        message: "User has been updated successfully",
+        updatedUser: userToUpdate,
+      });
   } catch (err) {
     console.error("Error updating user:", err.message);
-    res.status(500).json({ message: "Unable to update user", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Unable to update user", error: err.message });
   }
 };
 
-
-
-
 exports.addSessionNote = async (req, res) => {
-  console.log('Request Params:', req.params); // Should log the user ID
-  console.log('Request Headers:', req.headers); // Should include Content-Type: application/json
-  console.log('Request Body:', req.body); // Should contain { note, date }
+  console.log("Request Params:", req.params); // Should log the user ID
+  console.log("Request Headers:", req.headers); // Should include Content-Type: application/json
+  console.log("Request Body:", req.body); // Should contain { note, date }
 
   const { note, date } = req.body;
 
   if (!note || !date) {
-    console.log('Validation failed:', { note, date });
-    return res.status(400).json({ message: 'Note and date are required.' });
+    console.log("Validation failed:", { note, date });
+    return res.status(400).json({ message: "Note and date are required." });
   }
 
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
+      return res.status(404).json({ message: "User not found." });
     }
 
     user.sessionNotes.push({ note, date });
     await user.save();
-    res.status(201).json({ message: 'Session note added successfully.', sessionNotes: user.sessionNotes });
+    res
+      .status(201)
+      .json({
+        message: "Session note added successfully.",
+        sessionNotes: user.sessionNotes,
+      });
   } catch (error) {
-    console.error('Error adding session note:', error);
-    res.status(500).json({ message: 'Error adding session note.', error: error.message });
+    console.error("Error adding session note:", error);
+    res
+      .status(500)
+      .json({ message: "Error adding session note.", error: error.message });
   }
 };
-
-
 
 exports.getSessionNotes = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const user = await User.findById(id).select('sessionNotes');
+    const user = await User.findById(id).select("sessionNotes");
     if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
+      return res.status(404).json({ message: "User not found." });
     }
 
     res.status(200).json(user.sessionNotes);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching session notes.', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching session notes.", error: error.message });
   }
 };
 
-
-
 // Controller to handle medical history
 exports.addMedicalHistory = async (req, res) => {
-  console.log('Request Params:', req.params); // Should log the user ID
-  console.log('Request Headers:', req.headers); // Should include Content-Type: application/json
-  console.log('Incoming Request Body:', req.body); // Should contain { history, date }
+  console.log("Request Params:", req.params); // Should log the user ID
+  console.log("Request Headers:", req.headers); // Should include Content-Type: application/json
+  console.log("Incoming Request Body:", req.body); // Should contain { history, date }
 
   const { history, date } = req.body;
 
   if (!history || !date) {
-    console.log('Validation failed:', { history, date });
-    return res.status(400).json({ message: 'History and date are required.' });
+    console.log("Validation failed:", { history, date });
+    return res.status(400).json({ message: "History and date are required." });
   }
 
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
+      return res.status(404).json({ message: "User not found." });
     }
 
     user.medicalHistory.push({ history, date });
     await user.save();
-    res.status(201).json({ message: 'Medical record added successfully.', medicalHistory: user.medicalHistory });
+    res
+      .status(201)
+      .json({
+        message: "Medical record added successfully.",
+        medicalHistory: user.medicalHistory,
+      });
   } catch (error) {
-    console.error('Error adding medical record:', error);
-    res.status(500).json({ message: 'Error adding medical record.', error: error.message });
+    console.error("Error adding medical record:", error);
+    res
+      .status(500)
+      .json({ message: "Error adding medical record.", error: error.message });
   }
 };
-
-
-
 
 exports.getMedicalHistory = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const user = await User.findById(id).select('medicalHistory');
+    const user = await User.findById(id).select("medicalHistory");
     if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
+      return res.status(404).json({ message: "User not found." });
     }
 
     res.status(200).json(user.medicalHistory);
   } catch (error) {
-    console.error('Error fetching medical history:', error);
-    res.status(500).json({ message: 'Error fetching medical history.', error: error.message });
+    console.error("Error fetching medical history:", error);
+    res
+      .status(500)
+      .json({
+        message: "Error fetching medical history.",
+        error: error.message,
+      });
   }
 };
 
-
 // Add or Update User Preferences
 exports.addUserPreference = async (req, res) => {
-  console.log('Request Params:', req.params); // Logs the user ID
-  console.log('Request Headers:', req.headers); // Logs request headers
-  console.log('Request Body:', req.body); // Logs parsed body
+  console.log("Request Params:", req.params); // Logs the user ID
+  console.log("Request Headers:", req.headers); // Logs request headers
+  console.log("Request Body:", req.body); // Logs parsed body
 
   const { preference, date } = req.body;
 
   if (!preference || !date) {
-    console.log('Validation failed:', { preference, date });
-    return res.status(400).json({ message: 'Preference and date are required.' });
+    console.log("Validation failed:", { preference, date });
+    return res
+      .status(400)
+      .json({ message: "Preference and date are required." });
   }
 
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
+      return res.status(404).json({ message: "User not found." });
     }
 
     user.preferences.push({ preference, date });
     await user.save();
-    res.status(201).json({ message: 'Preference added successfully.', preferences: user.preferences });
+    res
+      .status(201)
+      .json({
+        message: "Preference added successfully.",
+        preferences: user.preferences,
+      });
   } catch (error) {
-    console.error('Error adding user preference:', error);
-    res.status(500).json({ message: 'Error adding user preference.', error: error.message });
+    console.error("Error adding user preference:", error);
+    res
+      .status(500)
+      .json({ message: "Error adding user preference.", error: error.message });
   }
 };
 
@@ -679,19 +768,53 @@ exports.getUserPreferences = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const user = await User.findById(id).select('preferences');
+    const user = await User.findById(id).select("preferences");
     if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
+      return res.status(404).json({ message: "User not found." });
     }
 
     res.status(200).json(user.preferences);
   } catch (error) {
-    console.error('Error fetching medical history:', error);
-    res.status(500).json({ message: 'Error fetching medical history.', error: error.message });
+    console.error("Error fetching medical history:", error);
+    res
+      .status(500)
+      .json({
+        message: "Error fetching medical history.",
+        error: error.message,
+      });
   }
 };
 
+// Add Nutrition History
+exports.addNutritionHistory = async (req, res) => {
+  try {
+    const { id } = req.params; // user ID
+    const { calories, protein, carbs, fats, goal } = req.body;
 
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const newEntry = {
+      date: new Date(),
+      calories,
+      protein,
+      carbs,
+      fats,
+      goal,
+    };
+
+    user.nutritionHistory.push(newEntry);
+    await user.save();
+
+    res.status(200).json({
+      message: "Nutrition history updated successfully",
+      nutritionHistory: user.nutritionHistory,
+    });
+  } catch (error) {
+    console.error("Error adding nutrition history:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
 
 exports.registerUser = async (req, res) => {
   const { name, email, password, role } = req.body;
@@ -699,11 +822,11 @@ exports.registerUser = async (req, res) => {
   try {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(409).json({ message: 'Email already in use.' });
+      return res.status(409).json({ message: "Email already in use." });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const emailToken = crypto.randomBytes(32).toString('hex'); // Generate a unique token
+    const emailToken = crypto.randomBytes(32).toString("hex"); // Generate a unique token
 
     const newUser = new User({
       name,
@@ -717,7 +840,7 @@ exports.registerUser = async (req, res) => {
 
     // Send confirmation email
     const transporter = nodemailer.createTransport({
-      service: 'gmail', // Adjust this based on your email provider
+      service: "gmail", // Adjust this based on your email provider
       auth: {
         user: process.env.EMAIL, // Your email address
         pass: process.env.EMAIL_PASSWORD, // Your email password or app-specific password
@@ -728,7 +851,7 @@ exports.registerUser = async (req, res) => {
     const mailOptions = {
       from: process.env.EMAIL,
       to: email,
-      subject: 'Email Confirmation',
+      subject: "Email Confirmation",
       text: `Please confirm your email by clicking the link: ${confirmationUrl}`,
       html: `<p>Please confirm your email by clicking the link below:</p><a href="${confirmationUrl}">Confirm Email</a>`,
     };
@@ -736,10 +859,13 @@ exports.registerUser = async (req, res) => {
     await transporter.sendMail(mailOptions);
 
     res.status(201).json({
-      message: 'User registered successfully. Please confirm your email to activate your account.',
+      message:
+        "User registered successfully. Please confirm your email to activate your account.",
     });
   } catch (err) {
-    console.error('Error registering user:', err);
-    res.status(500).json({ message: 'Error registering user.', error: err.message });
+    console.error("Error registering user:", err);
+    res
+      .status(500)
+      .json({ message: "Error registering user.", error: err.message });
   }
 };
