@@ -27,10 +27,9 @@ exports.getUserGoals = async (req, res) => {
   }
 };
 
-//  Crear una nueva meta
+// Crear una nueva meta
 exports.createGoal = async (req, res) => {
   const {
-    userId,
     goalType,
     targetValue,
     currentValue,
@@ -39,7 +38,11 @@ exports.createGoal = async (req, res) => {
     measure,
   } = req.body;
 
-  devLog("Received new goal payload:", req.body);
+  // Tomamos el ID desde el middleware o desde el body si se usa en pruebas
+  const userId = req.user?._id || req.body.userId;
+
+  devLog("Decoded User from Token:", req.user?._id);
+  devLog("Received payload body:", req.body);
 
   if (!userId || !goalType || targetValue === undefined || !measure) {
     return res.status(400).json({
@@ -50,7 +53,7 @@ exports.createGoal = async (req, res) => {
 
   try {
     const newGoal = await Goal.create({
-      userId,
+      userId, // ✅ campo correcto según el modelo
       goalType,
       targetValue,
       currentValue: currentValue || 0,
@@ -59,7 +62,7 @@ exports.createGoal = async (req, res) => {
       personalNotes: personalNotes || [],
     });
 
-    devLog("Goal created:", newGoal._id);
+    devLog("Goal created successfully:", newGoal._id);
     return res
       .status(201)
       .json({ message: "Goal created successfully", goal: newGoal });
@@ -110,7 +113,7 @@ exports.updateGoalProgress = async (req, res) => {
   }
 };
 
-//  Actualizar un milestone
+// Actualizar un milestone
 exports.updateGoalMilestone = async (req, res) => {
   const { goalId } = req.params;
   const { milestoneValue, achievedAt, note } = req.body;
@@ -149,7 +152,7 @@ exports.updateGoalMilestone = async (req, res) => {
   }
 };
 
-//  Eliminar una meta
+// Eliminar una meta
 exports.deleteGoal = async (req, res) => {
   try {
     const deletedGoal = await Goal.findByIdAndDelete(req.params.goalId);
