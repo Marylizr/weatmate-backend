@@ -1,12 +1,12 @@
-const { Schema, model } = require('mongoose');
+const { Schema, model } = require("mongoose");
 
 const roundSchema = new Schema({
   reps: Number,
   weight: Number,
   unit: {
     type: String,
-    enum: ['kg', 'lb'], // Ensures only kg or lb are stored
-    default: 'kg',
+    enum: ["kg", "lb"], // Ensures only kg or lb are stored
+    default: "kg",
   },
 });
 
@@ -21,6 +21,6 @@ const favSchema = new Schema({
   video: String,
 });
 
-const Fav = model('fav', favSchema);
+const Fav = model("fav", favSchema);
 
 module.exports = Fav;
