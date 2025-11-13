@@ -1,18 +1,11 @@
-const express = require('express');
-const preWorkoutController  = require('../controllers/preWorkoutController')
-const preWorkoutRouter = express.Router();
+const express = require("express");
+const preWorkoutController = require("../controllers/preWorkoutController");
+const router = express.Router();
 
+router.get("/", preWorkoutController.findAll);
+router.get("/:id", preWorkoutController.findOne);
+router.post("/", preWorkoutController.create);
+router.put("/:id", preWorkoutController.update);
+router.delete("/:id", preWorkoutController.delete);
 
-
-preWorkoutRouter.get('/', preWorkoutController.findAll);
-
-preWorkoutRouter.get('/:id', preWorkoutController.findOne);
-
-preWorkoutRouter.post('/',  preWorkoutController.create)
-
-preWorkoutRouter.delete('/:id', preWorkoutController.delete);
-
-preWorkoutRouter.put('/', preWorkoutController.update);
-
-
-module.exports =  preWorkoutRouter ; 
+module.exports = router;

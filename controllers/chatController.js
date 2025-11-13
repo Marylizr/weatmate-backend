@@ -1,74 +1,104 @@
-const { Configuration, OpenAIApi } = require('openai');
-const ChatUser = require('../models/chatUser');
-const OPENAI_API_KEY = require('dotenv').config();
-
+const { Configuration, OpenAIApi } = require("openai");
+const ChatUser = require("../models/chatUser");
+require("dotenv").config();
 
 const configuration = new Configuration({
-  organization: 'org-Vk2U2DI5BA7Hpq6iiTHFUblK',
-  apiKey: process.env.OPENAI_API_KEY
+  organization: "org-Vk2U2DI5BA7Hpq6iiTHFUblK",
+  apiKey: process.env.OPENAI_API_KEY,
 });
-
-
 
 const openai = new OpenAIApi(configuration);
 
-// Chat Completion Controller
+// === Chat Completion Controller ===
 exports.chatCompletion = async (req, res) => {
   try {
     const { prompt } = req.body;
 
-    // Validate the input
     if (!prompt) {
-      return res.status(400).send({ error: "Prompt is required" });
+      return res
+        .status(400)
+        .json({ success: false, error: "Prompt is required." });
     }
 
-    // Call OpenAI API
     const response = await openai.createChatCompletion({
-      model: "gpt-4", // Correct model name
+      model: "gpt-4",
       messages: [
         { role: "system", content: "You are a helpful assistant." },
         { role: "user", content: prompt },
       ],
-      
     });
 
-    // Extract and send the response content
     const responseContent = response.data.choices[0].message.content;
-    res.status(200).send({ response: responseContent });
 
-    console.log("OpenAI Request ID:", response.data.id); // Log request ID for debugging
+    console.log("✅ OpenAI Request completed");
+    res.status(200).json({ success: true, response: responseContent });
   } catch (error) {
-    console.error("Error with OpenAI API:", error.response ? error.response.data : error.message);
-    res.status(500).send({ error: "An error occurred while processing the request" });
+    console.error(
+      "Error with OpenAI API:",
+      error.response ? error.response.data : error.message
+    );
+    res.status(500).json({
+      success: false,
+      error: "An error occurred while processing the request.",
+    });
   }
 };
 
-// Controller to Retrieve All Chat Users
+// === FIND ALL (GET) ===
 exports.findAll = async (req, res) => {
   try {
-    const users = await ChatUser.find();
-    res.status(200).json(users);
+    const { trainerId, infotype, subCategory } = req.query;
+    const filter = {};
+
+    if (trainerId) filter.trainerId = trainerId;
+    if (infotype) filter.infotype = infotype;
+    if (subCategory) filter.subCategory = subCategory;
+
+    const chatEntries = await ChatUser.find(filter).sort({ date: -1 }).lean();
+
+    if (!chatEntries.length) {
+      return res.status(200).json({
+        success: true,
+        message: "No content found for the provided filters.",
+        data: [],
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Content retrieved successfully.",
+      count: chatEntries.length,
+      data: chatEntries,
+    });
   } catch (error) {
-    console.error("Error fetching chat users:", error.message);
-    res.status(500).send({ error: "An error occurred while fetching chat users" });
+    console.error("Error fetching chat content:", error.message);
+    res.status(500).json({
+      success: false,
+      error: "An error occurred while fetching chat content.",
+      details: error.message,
+    });
   }
 };
 
-// Controller to Create a New Chat User Entry
+// === CREATE (POST /savePrompt) ===
 exports.create = async (req, res) => {
   try {
-    const { name, content, infotype, subCategory, picture } = req.body;
+    const { name, trainerId, content, infotype, subCategory, picture } =
+      req.body;
 
-    // Validate Required Fields
-    if (!name || !content || !infotype) {
-      return res
-        .status(400)
-        .send({ error: "userName, content, and infotype are required." });
+    console.log("📥 Incoming request to /savePrompt");
+    console.log("Raw body received:", req.body);
+
+    // Basic validations
+    if (!name || !trainerId || !content || !infotype) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required fields.",
+      });
     }
 
-    // Validate Enum Values for infotype and subCategory
     const validInfotypes = ["healthy-tips", "recipes", "workouts"];
-    const validRecipeCategories = [
+    const validSubCategories = [
       "vegan",
       "vegetarian",
       "keto",
@@ -76,96 +106,154 @@ exports.create = async (req, res) => {
       "gluten-free",
       "mediterranean",
       "low-carb",
+      "basic",
+      "medium",
+      "advanced",
     ];
-    const validWorkoutLevels = ["basic", "medium", "advanced"];
 
     if (!validInfotypes.includes(infotype)) {
-      return res.status(400).send({ error: "Invalid infotype value." });
+      return res.status(400).json({
+        success: false,
+        error: "Invalid infotype value.",
+      });
     }
 
-    if (
-      infotype === "recipes" &&
-      subCategory &&
-      !validRecipeCategories.includes(subCategory)
-    ) {
-      return res.status(400).send({ error: "Invalid recipe subCategory value." });
+    if (subCategory && !validSubCategories.includes(subCategory)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid subCategory value.",
+      });
     }
 
-    if (
-      infotype === "workouts" &&
-      subCategory &&
-      !validWorkoutLevels.includes(subCategory)
-    ) {
-      return res.status(400).send({ error: "Invalid workout subCategory value." });
-    }
-
-    // Prepare Data for Insertion
-    const dataPosted = {
+    // Create document
+    const newChat = new ChatUser({
       name,
+      trainerId,
       content,
       infotype,
-      subCategory: subCategory || null, // Ensure subCategory is optional
-      picture: picture || null, // Handle optional picture
+      subCategory: subCategory || null,
+      picture: picture || null,
       date: Date.now(),
-    };
+    });
 
-    // Save New Chat Entry to Database
-    const newChat = new ChatUser(dataPosted);
     await newChat.save();
+    console.log("✅ Saved to DB:", newChat);
 
-    console.log("New Chat Created:", newChat);
-    res.status(201).json(newChat);
+    res.status(201).json({
+      success: true,
+      message: "Prompt saved successfully!",
+      data: newChat,
+    });
   } catch (error) {
-    console.error("Error creating chat entry:", error.message);
-    res.status(500).send({ error: "An error occurred while creating a new chat entry" });
+    console.error("Error in /savePrompt:", error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Internal server error",
+    });
   }
 };
 
-
-// Update a specific prompt by ID
+// === UPDATE ===
 exports.update = async (req, res) => {
   try {
-    const { id } = req.params; // Extract ID from the request parameters
-    const data = req.body; // Extract updated data from the request body
+    const { id } = req.params;
+    const { content, picture, infotype, subCategory } = req.body;
 
-    const updatedPrompt = await ChatUser.findByIdAndUpdate(
+    if (!id) {
+      return res
+        .status(400)
+        .json({ success: false, error: "ID parameter is required." });
+    }
+
+    const validInfotypes = ["healthy-tips", "recipes", "workouts"];
+    const validSubCategories = [
+      "vegan",
+      "vegetarian",
+      "keto",
+      "paleo",
+      "gluten-free",
+      "mediterranean",
+      "low-carb",
+      "basic",
+      "medium",
+      "advanced",
+    ];
+
+    if (infotype && !validInfotypes.includes(infotype)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Invalid infotype value." });
+    }
+
+    if (subCategory && !validSubCategories.includes(subCategory)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Invalid subCategory value." });
+    }
+
+    const updatedEntry = await ChatUser.findByIdAndUpdate(
       id,
-      data,
-      { new: true, runValidators: true } // Return the updated document and validate inputs
+      {
+        ...(content && { content }),
+        ...(picture && { picture }),
+        ...(infotype && { infotype }),
+        ...(subCategory && { subCategory }),
+        date: Date.now(),
+      },
+      { new: true, runValidators: true }
     );
 
-    if (!updatedPrompt) {
-      return res.status(404).json({ error: "Prompt not found." });
+    if (!updatedEntry) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Content not found." });
     }
 
     res.status(200).json({
-      message: "Your prompt has been updated successfully.",
-      updatedPrompt, // Return the updated prompt
+      success: true,
+      message: "Content updated successfully.",
+      data: updatedEntry,
     });
   } catch (error) {
-    console.error("Error updating prompt:", error.message);
-    res.status(500).json({ error: "An error occurred while updating the prompt." });
+    console.error("Error updating content:", error.message);
+    res.status(500).json({
+      success: false,
+      error: "An error occurred while updating the content.",
+      details: error.message,
+    });
   }
 };
 
-
-// Delete a specific workout by ID
+// === DELETE ===
 exports.delete = async (req, res) => {
   try {
-    const { id } = req.params; // Extract ID from the request parameters
+    const { id } = req.params;
 
-    const result = await ChatUser.findByIdAndDelete(id);
+    if (!id) {
+      return res
+        .status(400)
+        .json({ success: false, error: "ID parameter is required." });
+    }
 
-    if (!result) {
-      return res.status(404).json({ error: "Prompt not found." });
+    const deletedEntry = await ChatUser.findByIdAndDelete(id);
+
+    if (!deletedEntry) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Content not found." });
     }
 
     res.status(200).json({
-      message: "The prompt has been deleted successfully.",
-      deletedPrompt: result, // Optionally return the deleted document for confirmation
+      success: true,
+      message: "Content deleted successfully.",
+      deleted: deletedEntry,
     });
   } catch (error) {
-    console.error("Error deleting the prompt:", error.message);
-    res.status(500).json({ error: "An error occurred while deleting the prompt." });
+    console.error("Error deleting content:", error.message);
+    res.status(500).json({
+      success: false,
+      error: "An error occurred while deleting the content.",
+      details: error.message,
+    });
   }
 };

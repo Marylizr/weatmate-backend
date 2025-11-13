@@ -2,38 +2,27 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const PreWorkoutSchema = new Schema({
-  name: {
-    type: String,
-    required: true, // Ensure userName is mandatory
-    trim: true,
-  },
-  infotype: {
-    type: String,
-    enum: ["workouts"], // Restrict to "workouts"
-    required: true,
-  },
+  name: { type: String, required: true, trim: true },
+  infotype: { type: String, enum: ["workouts"], required: true },
   subCategory: {
     type: String,
-    enum: ["basic", "medium", "advanced"], // Restrict to predefined levels
+    enum: ["basic", "medium", "advanced"],
     required: true,
   },
-  date: {
-    type: Date,
-    default: Date.now,
-  },
-  picture: {
-    type: String,
-    trim: true, // Ensure no extra whitespace
-  },
-  content: {
-    type: String,
-    required: true, // Ensure workout content is provided
-  },
+  date: { type: Date, default: Date.now },
+  picture: { type: String, trim: true },
+  content: { type: String, required: true },
+
+  // Relación real
+  trainerId: { type: Schema.Types.ObjectId, ref: "User" },
+  userId: { type: Schema.Types.ObjectId, ref: "User" },
+
+  startDate: { type: Date },
+  endDate: { type: Date },
+  planName: { type: String, trim: true },
 });
 
-// Add indexing for better query performance
-PreWorkoutSchema.index({ userName: 1, subCategory: 1 });
+PreWorkoutSchema.index({ userId: 1, subCategory: 1 });
 
 const PreWorkout = mongoose.model("PreWorkout", PreWorkoutSchema);
-
 module.exports = PreWorkout;
