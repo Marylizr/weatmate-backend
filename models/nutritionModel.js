@@ -3,6 +3,12 @@ const Schema = mongoose.Schema;
 
 const NutritionSchema = new Schema(
   {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null, // Will be filled when assigned
+    },
+
     // Title of the meal plan or recipe
     title: {
       type: String,
