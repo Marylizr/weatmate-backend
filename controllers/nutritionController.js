@@ -1,11 +1,6 @@
-// controllers/nutritionController.js
 const Nutrition = require("../models/nutritionModel");
 
 // === GET ALL ===
-// Devuelve planes según el rol:
-// - admin: todo
-// - personal-trainer / trainer: sus planes + biblioteca general
-// - cliente: solo los planes asignados a él (userId == req.user._id)
 exports.findAll = async (req, res) => {
   try {
     const currentUserId = req.user._id;
@@ -14,16 +9,15 @@ exports.findAll = async (req, res) => {
     let query = {};
 
     if (role === "admin") {
-      // Admin ve todo
+      // Admin: Everything
       query = {};
     } else if (role === "personal-trainer" || role === "trainer") {
-      // Trainer ve sus planes (templates, asignados, generales que haya creado)
-      // + biblioteca general creada por otros (isGeneral: true)
+      // Trainer: Own plans or general library
       query = {
         $or: [{ trainerId: currentUserId }, { isGeneral: true }],
       };
     } else {
-      // Cliente / usuario normal: solo lo que le asignaron
+      // Client: Assigned plans only
       query = { userId: currentUserId };
     }
 
@@ -36,28 +30,20 @@ exports.findAll = async (req, res) => {
 };
 
 // === GET ONE ===
-// Solo puede verlo:
-// - admin
-// - su creador (trainerId)
-// - el usuario al que fue asignado (userId)
 exports.findOne = async (req, res) => {
   try {
     const currentUserId = req.user._id;
     const role = req.user.role;
     const plan = await Nutrition.findById(req.params.id);
 
-    if (!plan) {
+    if (!plan)
       return res.status(404).json({ error: "Nutrition plan not found" });
-    }
 
     const isOwner = plan.trainerId.toString() === currentUserId.toString();
-    const isAssignedUser =
-      plan.userId && plan.userId.toString() === currentUserId.toString();
+    const isAssigned = plan.userId?.toString() === currentUserId.toString();
 
-    if (role !== "admin" && !isOwner && !isAssignedUser && !plan.isGeneral) {
-      return res
-        .status(403)
-        .json({ error: "Not authorized to access this plan" });
+    if (role !== "admin" && !isOwner && !isAssigned && !plan.isGeneral) {
+      return res.status(403).json({ error: "Not allowed to view this plan" });
     }
 
     res.status(200).json(plan);
@@ -68,19 +54,15 @@ exports.findOne = async (req, res) => {
 };
 
 // === CREATE ===
-// controllers/nutritionController.js
 exports.create = async (req, res) => {
   try {
     const trainerId = req.user._id;
-
     let payload = req.body;
 
-    // Si el payload no es un array, lo convertimos
     if (!Array.isArray(payload)) {
       payload = [payload];
     }
 
-    // Validar todos los items (title + content obligatorios)
     for (const plan of payload) {
       if (!plan.title || !plan.content) {
         return res.status(400).json({
@@ -89,16 +71,14 @@ exports.create = async (req, res) => {
       }
     }
 
-    // Incluir trainerId y userId (si no existe)
-    const enrichedPayload = payload.map((plan) => ({
+    const enriched = payload.map((plan) => ({
       ...plan,
-      trainerId, // Siempre inyectado desde token
-      userId: plan.userId || null, // Solo si se asigna a un usuario
+      trainerId,
+      userId: plan.userId || null,
       isGeneral: !!plan.isGeneral,
     }));
 
-    // insertMany para manejar lote
-    const savedPlans = await Nutrition.insertMany(enrichedPayload);
+    const savedPlans = await Nutrition.insertMany(enriched);
 
     res.status(201).json({
       message: "Nutrition plan(s) created successfully",
@@ -111,36 +91,32 @@ exports.create = async (req, res) => {
 };
 
 // === UPDATE ===
-
 exports.update = async (req, res) => {
   try {
     const currentUserId = req.user._id;
     const role = req.user.role;
-    const { _id } = req.body;
 
-    if (!_id) {
-      return res.status(400).json({ error: "Missing plan _id in body" });
+    const planId = req.params.id || req.body._id;
+    if (!planId) {
+      return res.status(400).json({ error: "Missing plan id" });
     }
 
-    const existing = await Nutrition.findById(_id);
-
+    const existing = await Nutrition.findById(planId);
     if (!existing) {
       return res.status(404).json({ error: "Nutrition plan not found" });
     }
 
     const isOwner = existing.trainerId.toString() === currentUserId.toString();
-
     if (!isOwner && role !== "admin") {
       return res
         .status(403)
         .json({ error: "You are not allowed to update this plan" });
     }
 
-    // No permitimos cambiar trainerId desde el body
     const updateData = { ...req.body };
     delete updateData.trainerId;
 
-    const updated = await Nutrition.findByIdAndUpdate(_id, updateData, {
+    const updated = await Nutrition.findByIdAndUpdate(planId, updateData, {
       new: true,
       runValidators: true,
     });
@@ -156,7 +132,6 @@ exports.update = async (req, res) => {
 };
 
 // === DELETE ===
-
 exports.delete = async (req, res) => {
   try {
     const currentUserId = req.user._id;
@@ -164,7 +139,6 @@ exports.delete = async (req, res) => {
     const { id } = req.params;
 
     const existing = await Nutrition.findById(id);
-
     if (!existing) {
       return res.status(404).json({ error: "Nutrition plan not found" });
     }
@@ -172,14 +146,12 @@ exports.delete = async (req, res) => {
     const isOwner = existing.trainerId.toString() === currentUserId.toString();
 
     if (!isOwner && role !== "admin") {
-      return res
-        .status(403)
-        .json({ error: "You are not allowed to delete this plan" });
+      return res.status(403).json({ error: "Not allowed to delete this plan" });
     }
 
     await Nutrition.findByIdAndDelete(id);
 
-    res.status(200).json({ message: "Nutrition plan deleted successfully" });
+    res.status(200).json({ message: "Plan deleted successfully" });
   } catch (error) {
     console.error("Error deleting nutrition plan:", error);
     res.status(500).json({ error: "Internal server error" });

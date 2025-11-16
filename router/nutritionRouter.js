@@ -3,20 +3,18 @@ const nutritionController = require("../controllers/nutritionController");
 const { authMiddleware } = require("../auth/authMiddleware");
 const nutritionRouter = express.Router();
 
-// GET all nutrition plans (only allowed plans)
+// === GET ===
 nutritionRouter.get("/", authMiddleware, nutritionController.findAll);
-
-// GET one by ID
 nutritionRouter.get("/:id", authMiddleware, nutritionController.findOne);
 
-// CREATE a new nutrition plan
+// === CREATE ===
 nutritionRouter.post("/", authMiddleware, nutritionController.create);
 
-// DELETE a plan
-nutritionRouter.delete("/:id", authMiddleware, nutritionController.delete);
+// === UPDATE ===
+nutritionRouter.put("/:id", authMiddleware, nutritionController.update);
+nutritionRouter.patch("/:id", authMiddleware, nutritionController.update);
 
-// UPDATE a plan (partial or full)
-nutritionRouter.patch("/", authMiddleware, nutritionController.update);
-nutritionRouter.put("/", authMiddleware, nutritionController.update);
+// === DELETE ===
+nutritionRouter.delete("/:id", authMiddleware, nutritionController.delete);
 
 module.exports = nutritionRouter;
