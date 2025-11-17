@@ -83,14 +83,14 @@ exports.findAll = async (req, res) => {
 // === CREATE (POST /savePrompt) ===
 exports.create = async (req, res) => {
   try {
-    const { name, trainerId, content, infotype, subCategory, picture } =
+    const { name, trainerId, title, content, infotype, subCategory, picture } =
       req.body;
 
     console.log("📥 Incoming request to /savePrompt");
     console.log("Raw body received:", req.body);
 
     // Basic validations
-    if (!name || !trainerId || !content || !infotype) {
+    if (!name || !trainerId || !content || !infotype || !title) {
       return res.status(400).json({
         success: false,
         error: "Missing required fields.",
@@ -129,6 +129,7 @@ exports.create = async (req, res) => {
     const newChat = new ChatUser({
       name,
       trainerId,
+      title,
       content,
       infotype,
       subCategory: subCategory || null,
@@ -157,7 +158,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { content, picture, infotype, subCategory } = req.body;
+    const { content, picture, infotype, subCategory, title } = req.body;
 
     if (!id) {
       return res
@@ -195,6 +196,7 @@ exports.update = async (req, res) => {
       id,
       {
         ...(content && { content }),
+        ...(title && { title }),
         ...(picture && { picture }),
         ...(infotype && { infotype }),
         ...(subCategory && { subCategory }),
