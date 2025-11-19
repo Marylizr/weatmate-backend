@@ -1,13 +1,13 @@
-const { Configuration, OpenAIApi } = require("openai");
-const ChatUser = require("../models/chatUser");
 require("dotenv").config();
+const ChatUser = require("../models/chatUser");
 
-const configuration = new Configuration({
-  organization: "org-Vk2U2DI5BA7Hpq6iiTHFUblK",
+// Importación correcta para OpenAI v4
+const OpenAI = require("openai");
+
+// Inicialización correcta del cliente
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-const openai = new OpenAIApi(configuration);
 
 // === Chat Completion Controller ===
 exports.chatCompletion = async (req, res) => {
