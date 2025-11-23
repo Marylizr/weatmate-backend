@@ -1,8 +1,8 @@
 require("dotenv").config();
 const ChatUser = require("../models/chatUser");
 
-// Importación correcta para OpenAI v4
-const OpenAI = require("openai");
+// Importación correcta para OpenAI v4 (CommonJS)
+const OpenAI = require("openai").default;
 
 // Inicialización correcta del cliente
 const openai = new OpenAI({
@@ -20,6 +20,7 @@ exports.chatCompletion = async (req, res) => {
         .json({ success: false, error: "Prompt is required." });
     }
 
+    // Nueva sintaxis oficial OpenAI v4
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -30,13 +31,14 @@ exports.chatCompletion = async (req, res) => {
 
     const responseContent = response.choices[0].message.content;
 
-    console.log(" OpenAI Request completed");
+    console.log("OpenAI Request completed");
     res.status(200).json({ success: true, response: responseContent });
   } catch (error) {
     console.error(
       "Error with OpenAI API:",
       error.response ? error.response.data : error.message
     );
+
     res.status(500).json({
       success: false,
       error: "An error occurred while processing the request.",
@@ -86,10 +88,8 @@ exports.create = async (req, res) => {
     const { name, trainerId, title, content, infotype, subCategory, picture } =
       req.body;
 
-    console.log("Incoming request to /savePrompt");
-    console.log("Raw body received:", req.body);
+    console.log("Incoming request to /savePrompt:", req.body);
 
-    // Basic validations
     if (!name || !trainerId || !content || !infotype || !title) {
       return res.status(400).json({
         success: false,
@@ -125,7 +125,6 @@ exports.create = async (req, res) => {
       });
     }
 
-    // Create document
     const newChat = new ChatUser({
       name,
       trainerId,
