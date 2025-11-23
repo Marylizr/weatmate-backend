@@ -33,7 +33,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.9.4",
     "nodemailer": "^6.9.16",
-    "openai": "^3.3.0",
+    "openai": "^4.104.0",
     "react-calendar": "^4.6.0"
   },
   "devDependencies": {

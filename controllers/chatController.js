@@ -1,10 +1,8 @@
 require("dotenv").config();
 const ChatUser = require("../models/chatUser");
 
-// Importación correcta para CommonJS + OpenAI v4
 const { OpenAI } = require("openai");
 
-// Inicialización correcta del cliente
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -20,7 +18,6 @@ exports.chatCompletion = async (req, res) => {
         .json({ success: false, error: "Prompt is required." });
     }
 
-    // Nueva sintaxis oficial OpenAI v4
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
