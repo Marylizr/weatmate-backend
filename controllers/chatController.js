@@ -1,8 +1,8 @@
 require("dotenv").config();
 const ChatUser = require("../models/chatUser");
 
-// Importación correcta para OpenAI v4 (CommonJS)
-const OpenAI = require("openai").default;
+// Importación correcta para CommonJS + OpenAI v4
+const { OpenAI } = require("openai");
 
 // Inicialización correcta del cliente
 const openai = new OpenAI({
