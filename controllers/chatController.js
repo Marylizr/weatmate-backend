@@ -20,17 +20,17 @@ exports.chatCompletion = async (req, res) => {
         .json({ success: false, error: "Prompt is required." });
     }
 
-    const response = await openai.createChatCompletion({
-      model: "gpt-4",
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: "You are a helpful assistant." },
         { role: "user", content: prompt },
       ],
     });
 
-    const responseContent = response.data.choices[0].message.content;
+    const responseContent = response.choices[0].message.content;
 
-    console.log("✅ OpenAI Request completed");
+    console.log(" OpenAI Request completed");
     res.status(200).json({ success: true, response: responseContent });
   } catch (error) {
     console.error(
@@ -86,7 +86,7 @@ exports.create = async (req, res) => {
     const { name, trainerId, title, content, infotype, subCategory, picture } =
       req.body;
 
-    console.log("📥 Incoming request to /savePrompt");
+    console.log("Incoming request to /savePrompt");
     console.log("Raw body received:", req.body);
 
     // Basic validations
@@ -138,7 +138,7 @@ exports.create = async (req, res) => {
     });
 
     await newChat.save();
-    console.log("✅ Saved to DB:", newChat);
+    console.log("Saved to DB:", newChat);
 
     res.status(201).json({
       success: true,
