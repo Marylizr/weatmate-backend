@@ -1,18 +1,23 @@
-const express = require('express');
-const  moodTrackerController  = require('../controllers/moodTrackerController')
+const express = require("express");
+const moodTrackerController = require("../controllers/moodTrackerController");
 const moodTrackerRouter = express.Router();
 
+// GET all
+moodTrackerRouter.get("/", moodTrackerController.findAll);
 
+// GET by userId (nuevo y necesario)
+moodTrackerRouter.get("/user/:userId", moodTrackerController.findByUser);
 
-moodTrackerRouter.get('/', moodTrackerController.findAll);
+// GET by id
+moodTrackerRouter.get("/:id", moodTrackerController.findOne);
 
-moodTrackerRouter.get('/:id', moodTrackerController.findOne);
+// CREATE
+moodTrackerRouter.post("/", moodTrackerController.create);
 
-moodTrackerRouter.post('/',  moodTrackerController.create)
+// DELETE
+moodTrackerRouter.delete("/:id", moodTrackerController.delete);
 
-moodTrackerRouter.delete('/:id', moodTrackerController.delete);
+// UPDATE
+moodTrackerRouter.put("/:id", moodTrackerController.update);
 
-moodTrackerRouter.put('/', moodTrackerController.update);
-
-
-module.exports =  moodTrackerRouter ; 
+module.exports = moodTrackerRouter;
