@@ -1,9 +1,12 @@
-const MoodTracker = require("../models/MoodTrackerModel");
+const MoodTracker = require("../models/moodTrackerModel");
 
 // CREATE
 exports.create = async (req, res) => {
+  console.log("🔥 MoodTracker CREATE BODY:", req.body);
   try {
-    const { userId, mood, comments, suggestions, date } = req.body;
+    const { userId, mood, comments, suggestions, date, motivationalMessage } =
+      req.body;
+    req.body;
 
     if (!userId || !mood) {
       return res.status(400).json({
@@ -18,6 +21,7 @@ exports.create = async (req, res) => {
       comments: comments || "",
       suggestions: suggestions || [],
       date: date || new Date(),
+      motivationalMessage: suggestions?.[0]?.content || "",
     });
 
     await newMood.save();

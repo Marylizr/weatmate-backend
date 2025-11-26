@@ -20,6 +20,10 @@ const MoodTrackerSchema = new mongoose.Schema({
     required: true,
     default: Date.now,
   },
+  suggestions: {
+    type: Array,
+    default: [],
+  },
   motivationalMessage: {
     type: String,
     default: "",
