@@ -8,24 +8,29 @@ const {
 } = require("../auth/authMiddleware");
 const authenticateTrainer = require("../auth/authenticateTrainer");
 
-// Specific route for the logged-in user
+// ==============================
+//  AUTH ROUTES
+// ==============================
+
+// Logged-in user's data
 userRouter.get("/me", authMiddleware, requireVerified, userController.findOne);
 
-// Create a new user (Admin Only)
+// Create new user by Admin
 userRouter.post("/", authMiddleware, IsAdmin, userController.createUserByAdmin);
 
-userRouter.post("/create-profile", userController.create); // Public signup route
+// Public sign up
+userRouter.post("/create-profile", userController.create);
 
-userRouter.get("/trainers", userController.getAllTrainers); // Public route for fetching trainers
-// OAuth2 callback
+// Get all trainers (public)
+userRouter.get("/trainers", userController.getAllTrainers);
 
-// Send verification email manually (optional)
+// Send verification email
 userRouter.post("/send-verification", userController.sendVerificationEmail);
 
-// Confirm email verification
+// Confirm email
 userRouter.get("/verify-email", userController.verifyEmail);
 
-// Fetch all users (Admin Only and PT)
+// Fetch all users (Admin + PT only)
 userRouter.get(
   "/",
   authMiddleware,
@@ -33,19 +38,25 @@ userRouter.get(
   userController.findAll
 );
 
-// Specific routes to fetch user data by different criteria
+// ==============================
+//  SPECIFIC QUERY ROUTES
+//  (email, name, etc.)
+// ==============================
+
 userRouter.get(
   "/email/:id",
   authMiddleware,
   requireVerified,
   userController.findOneEmail
 );
+
 userRouter.get(
   "/name/:id",
   authMiddleware,
   requireVerified,
   userController.findOneName
 );
+
 userRouter.get(
   "/id/:email",
   authMiddleware,
@@ -53,24 +64,27 @@ userRouter.get(
   userController.findOneEmail
 );
 
-// Dynamic route for fetching a user by ID
-userRouter.get(
-  "/:id",
-  authMiddleware,
-  requireVerified,
-  userController.findOneId
-);
+// ==============================
+//  ADMIN UPDATE / DELETE ROUTES
+// ==============================
 
-// Delete a user (Admin Only)
-userRouter.delete("/:id", authMiddleware, IsAdmin, userController.delete);
-
-// Route for users to update their own profile
-userRouter.put("/", authMiddleware, requireVerified, userController.update);
-
-// Route for admins to update other users' profiles
+// Admin updates any user
 userRouter.put("/:id", authMiddleware, IsAdmin, userController.update);
 
-// Add session note
+// Admin deletes a user
+userRouter.delete("/:id", authMiddleware, IsAdmin, userController.delete);
+
+// ==============================
+//  USER SELF-UPDATE ROUTE
+// ==============================
+
+// Logged-in user updates their own profile
+userRouter.put("/", authMiddleware, requireVerified, userController.update);
+
+// ==============================
+//  SESSION NOTES ROUTES
+// ==============================
+
 userRouter.post(
   "/:id/session-notes",
   authMiddleware,
@@ -78,7 +92,6 @@ userRouter.post(
   userController.addSessionNote
 );
 
-// Get session notes
 userRouter.get(
   "/:id/session-notes",
   authMiddleware,
@@ -86,13 +99,17 @@ userRouter.get(
   userController.getSessionNotes
 );
 
-// Fetch and update user preferences
+// ==============================
+//  PREFERENCES ROUTES
+// ==============================
+
 userRouter.get(
   "/:id/user-preferences",
   authMiddleware,
   requireVerified,
   userController.getUserPreferences
 );
+
 userRouter.post(
   "/:id/user-preferences",
   authMiddleware,
@@ -100,13 +117,17 @@ userRouter.post(
   userController.addUserPreference
 );
 
-// Add and fetch medical history
+// ==============================
+//  MEDICAL HISTORY ROUTES
+// ==============================
+
 userRouter.post(
   "/:id/medical-history",
   authMiddleware,
   requireVerified,
   userController.addMedicalHistory
 );
+
 userRouter.get(
   "/:id/medical-history",
   authMiddleware,
@@ -114,6 +135,22 @@ userRouter.get(
   userController.getMedicalHistory
 );
 
+// ==============================
+//  NUTRITION HISTORY
+// ==============================
+
 userRouter.post("/:id/nutrition-history", userController.addNutritionHistory);
+
+// ==============================
+//  IMPORTANT — KEEP THIS LAST
+//  Dynamic GET by ID
+// ==============================
+
+userRouter.get(
+  "/:id",
+  authMiddleware,
+  requireVerified,
+  userController.findOneId
+);
 
 module.exports = userRouter;
