@@ -2,11 +2,12 @@ const MoodTracker = require("../models/moodTrackerModel");
 
 // CREATE
 exports.create = async (req, res) => {
-  console.log("🔥 MoodTracker CREATE BODY:", req.body);
+  console.log("ENTERED MoodTrackerController.create");
+  console.log("BODY RECEIVED:", req.body);
+
   try {
-    const { userId, mood, comments, suggestions, date, motivationalMessage } =
+    const { userId, mood, comments, suggestions, motivationalMessage, date } =
       req.body;
-    req.body;
 
     if (!userId || !mood) {
       return res.status(400).json({
@@ -15,25 +16,41 @@ exports.create = async (req, res) => {
       });
     }
 
-    const newMood = new MoodTracker({
+    // Normalizamos suggestions al tipo Array que pide el schema
+    let safeSuggestions = [];
+    if (Array.isArray(suggestions)) {
+      safeSuggestions = suggestions;
+    } else if (typeof suggestions === "string" && suggestions.trim() !== "") {
+      safeSuggestions = [
+        {
+          title: "Motivational Message",
+          content: suggestions.trim(),
+        },
+      ];
+    }
+
+    const finalMotivationalMessage =
+      motivationalMessage ||
+      (safeSuggestions[0] && safeSuggestions[0].content) ||
+      "";
+
+    const newMood = await MoodTracker.create({
       userId,
       mood,
       comments: comments || "",
-      suggestions: suggestions || [],
-      date: date || new Date(),
-      motivationalMessage: suggestions?.[0]?.content || "",
+      suggestions: safeSuggestions,
+      motivationalMessage: finalMotivationalMessage,
+      date: date ? new Date(date) : new Date(),
     });
 
-    await newMood.save();
-
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Mood logged successfully",
       data: newMood,
     });
   } catch (error) {
     console.error("Error saving mood:", error);
-    res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: error.message });
   }
 };
 
