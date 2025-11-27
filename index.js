@@ -1,14 +1,16 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const connectToDatabase = require("./mongo/index"); // Import the MongoDB connection
+const connectToDatabase = require("./mongo/index");
 const app = express();
 const port = process.env.PORT || 3001;
 
 if (!port) {
   console.error("PORT environment variable is not defined.");
-  process.exit(1); // Exit if PORT isn't set
+  process.exit(1);
 }
+
+// Force HTTPS in production
 if (process.env.NODE_ENV === "production") {
   app.use((req, res, next) => {
     if (req.headers["x-forwarded-proto"] !== "https") {
@@ -21,46 +23,44 @@ if (process.env.NODE_ENV === "production") {
 // Connect to MongoDB
 connectToDatabase();
 
-// Middleware
+// Body Parsers
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// CORS Configuration
-const allowedOrigins = [
-  "http://localhost:3000",
-  "https://sweatmateapp.netlify.app",
-];
+// ====== CORS CONFIG (FIXED) ======
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "https://sweatmateapp.netlify.app",
+      "https://sweatmate-app-b74e82edf23b.herokuapp.com",
+    ],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+      "X-Requested-With",
+    ],
+    credentials: true,
+  })
+);
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
+// Preflight OPTIONS
+app.options("*", cors());
 
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      console.log("Blocked by CORS:", origin);
-      return callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization"],
-  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-};
+// =================================
 
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
-
-// Routes
+// ROUTES
 const appRouter = require("./router");
 app.use("/", appRouter);
 
+// Default route
 app.get("/", (req, res) => {
   res.status(200).json({ message: "SweatMate Backend is Running!" });
 });
 
-// Default Route to Confirm Server is Running
-
-// Start Server
+// Start server
 app.listen(port, () => {
   console.log(`SweatMate listening on port ${port}`);
 });
