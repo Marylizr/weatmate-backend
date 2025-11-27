@@ -1,4 +1,4 @@
-const MoodTracker = require("../models/moodTrackerModel");
+const MoodTracker = require("../models/MoodTrackerModel");
 
 // CREATE
 exports.create = async (req, res) => {
