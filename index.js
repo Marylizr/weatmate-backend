@@ -25,7 +25,6 @@ connectToDatabase();
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// CORS Configuration
 const allowedOrigins = [
   "http://localhost:3000",
   "https://sweatmateapp.netlify.app",
@@ -33,22 +32,35 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function (origin, callback) {
+    // Permite requests sin origen (por ejemplo, Postman o server-side)
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
+      callback(null, true);
     } else {
       console.log("Blocked by CORS:", origin);
-      return callback(new Error("Not allowed by CORS"));
+      callback(new Error("Not allowed by CORS"));
     }
   },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "Accept",
+    "X-Requested-With",
+  ],
   credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization"],
-  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
 };
 
+// Aplica CORS global
 app.use(cors(corsOptions));
+
+// Respuesta correcta a preflight OPTIONS
 app.options("*", cors(corsOptions));
+
+/* -------------------------- */
 
 // Routes
 const appRouter = require("./router");
