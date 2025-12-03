@@ -4,7 +4,7 @@ const appRouter = express.Router();
 const userRouter = require("../router/userRouter");
 const loginRouter = require("../router/loginRouter");
 const { addWorkoutRouter } = require("../router/addWorkoutRouter");
-const saveWorkourRouter = require("../router/saveWorkoutRouter");
+const saveWorkoutRouter = require("../router/saveWorkoutRouter");
 const favRouter = require("../router/favRouter");
 const { contactRouter } = require("../router/contactRouter");
 const chatRouter = require("../router/chatRouter");
@@ -20,9 +20,14 @@ const menstrualCycleRouter = require("./menstrualCycleRouter");
 const passwordRouter = require("./resetPasswordRouter");
 const nutritionRouter = require("./nutritionRouter");
 
+appRouter.use((req, res, next) => {
+  console.log(` Request: ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 appRouter.use("/", loginRouter);
 appRouter.use("/workouts", addWorkoutRouter);
-appRouter.use("/saveworkout", saveWorkourRouter);
+appRouter.use("/saveworkout", saveWorkoutRouter);
 appRouter.use("/fav", favRouter);
 appRouter.use("/user", userRouter);
 appRouter.use("/contact", contactRouter);
@@ -39,16 +44,8 @@ appRouter.use("/menstrualCycle", menstrualCycleRouter);
 appRouter.use("/", passwordRouter);
 appRouter.use("/nutrition", nutritionRouter);
 
-// Debug middleware for incoming requests
-
-appRouter.use((req, res, next) => {
-  console.log(`Request received: ${req.method} ${req.url}`);
-  next();
-});
-
-// Fallback for unhandled routes
 appRouter.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
+  return res.status(404).json({ message: "Route not found" });
 });
 
 module.exports = appRouter;

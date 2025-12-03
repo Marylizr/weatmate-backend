@@ -1,104 +1,125 @@
 const SaveWork = require("../models/saveWorkoutModel");
+const mongoose = require("mongoose");
 
-// Get all workouts for a user
+// ========== FIND ALL ==========
 exports.findAll = async (req, res) => {
-  const { userId } = req.query;
-  if (!userId) return res.status(400).json({ error: "userId is required" });
+  try {
+    const { userId } = req.query;
 
-  const workouts = await SaveWork.find({ userId }).sort({ order: 1 });
+    if (!userId || userId === "undefined") {
+      return res.status(200).json([]);
+    }
 
-  res.status(200).json(workouts);
+    const workouts = await SaveWork.find({ userId }).sort({ date: -1 });
+    return res.status(200).json(workouts);
+  } catch (err) {
+    console.error("Error in findAll:", err);
+    return res.status(500).json({ error: err.message });
+  }
 };
 
-// Create a workout (only if not exists)
+// ========== FIND ONE BY ID ==========
+exports.findOne = async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid workout ID" });
+    }
+
+    const workout = await SaveWork.findById(id);
+    if (!workout) {
+      return res.status(404).json({ message: "Workout not found" });
+    }
+
+    return res.status(200).json(workout);
+  } catch (err) {
+    console.error("Error in findOne:", err);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+// ========== CREATE WORKOUT ==========
 exports.create = async (req, res) => {
-  const data = req.body;
+  try {
+    const data = req.body;
 
-  if (!data.userId)
-    return res.status(400).json({ error: "userId is required" });
+    const dataPosted = {
+      userId: data.userId,
+      name: data.name,
+      type: data.type,
+      workoutName: data.workoutName,
+      description: data.description,
+      reps: data.reps,
+      lifted: data.lifted,
+      date: data.date || new Date(),
+      series: data.series,
+      picture: data.picture,
+      video: data.video,
+    };
 
-  // Prevent duplicates by name + user
-  const exists = await SaveWork.findOne({
-    userId: data.userId,
-    workoutName: data.workoutName,
-  });
+    const newWorkout = new SaveWork(dataPosted);
+    await newWorkout.save();
 
-  if (exists) {
-    return res.status(200).json({
-      status: "exists",
-      message: "Workout already registered for this user",
-      workout: exists,
+    console.log("Workout created:", newWorkout);
+    return res.status(201).json({
+      message: "Your new workout was created successfully",
+      newWorkout,
     });
+  } catch (err) {
+    console.error("Error in create:", err);
+    return res.status(500).json({ error: err.message });
   }
-
-  // Create new workout
-  const newWorkout = new SaveWork({
-    ...data,
-    rounds: data.rounds || [],
-    order: data.order || 0,
-  });
-
-  await newWorkout.save();
-
-  res.status(201).json({
-    message: "Workout created successfully",
-    workout: newWorkout,
-  });
 };
 
-// Add round to existing workout
-exports.addRound = async (req, res) => {
-  const { workoutId } = req.params;
-  const { round } = req.body;
+// ========== UPDATE WORKOUT ==========
+exports.update = async (req, res) => {
+  try {
+    const id = req.params.id;
 
-  const workout = await SaveWork.findById(workoutId);
-  if (!workout) return res.status(404).json({ error: "Workout not found" });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid workout ID" });
+    }
 
-  workout.rounds.push(round);
-  await workout.save();
+    const data = req.body;
 
-  res.status(200).json({ message: "Round added", workout });
-};
+    const updatedWorkout = await SaveWork.findByIdAndUpdate(id, data, {
+      new: true,
+    });
 
-// Save complete session in history
-exports.saveSession = async (req, res) => {
-  const { workoutId } = req.params;
-  const { rounds, date } = req.body;
+    if (!updatedWorkout) {
+      return res.status(404).json({ message: "Workout not found" });
+    }
 
-  const workout = await SaveWork.findById(workoutId);
-  if (!workout) return res.status(404).json({ error: "Workout not found" });
-
-  workout.sessionHistory.push({
-    date: date || new Date(),
-    rounds,
-  });
-
-  // clear today's temporary rounds
-  workout.rounds = [];
-
-  await workout.save();
-
-  res.status(200).json({ message: "Session saved", workout });
-};
-
-// Update order of workouts
-exports.reorder = async (req, res) => {
-  const { userId, newOrder } = req.body;
-
-  if (!userId || !newOrder)
-    return res.status(400).json({ error: "userId and newOrder required" });
-
-  for (let item of newOrder) {
-    await SaveWork.findByIdAndUpdate(item._id, { order: item.order });
+    return res.status(200).json({
+      message: "Your workout has been updated successfully",
+      updatedWorkout,
+    });
+  } catch (err) {
+    console.error("Error in update:", err);
+    return res.status(500).json({ error: err.message });
   }
-
-  res.status(200).json({ message: "Order updated" });
 };
 
-// Delete workout
+// ========== DELETE WORKOUT ==========
 exports.delete = async (req, res) => {
-  const { id } = req.params;
+  try {
+    const id = req.params.id;
 
-  await SaveWork.findByIdAndDelete(id);
-  res.status(204).send();
+    // Validación nueva — evita 500 por CastError
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid workout ID" });
+    }
+
+    const result = await SaveWork.findByIdAndDelete(id);
+
+    if (!result) {
+      return res.status(404).json({ message: "Workout not found" });
+    }
+
+    return res.status(204).send();
+  } catch (err) {
+    console.error("Error in delete:", err);
+    return res.status(500).json({ error: err.message });
+  }
 };
