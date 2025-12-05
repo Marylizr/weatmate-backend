@@ -1,20 +1,25 @@
-const { Schema, model } = require('mongoose');
+const mongoose = require("mongoose");
 
+const ProgressSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    name: String,
 
-const progressSchema = new Schema({ 
-   name: String,
-   userId:String,
-   weight: String,
-   waist: String,
-   hips: String,
-   chest:String,
-   bodyFat: String,
-   note: String,
-   date: { type: Date, default: Date.now },
-   picture: String,
-});
+    weight: Number,
+    waist: Number,
+    hips: Number,
+    chest: Number,
+    neck: Number,
+    bodyFat: Number,
+    date: Date,
+    note: String,
+    picture: String,
+  },
+  { timestamps: true }
+);
 
-
-const Progress = model ('progress', progressSchema);
-
-module.exports = Progress;
+module.exports = mongoose.model("Progress", ProgressSchema);

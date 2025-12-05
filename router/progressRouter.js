@@ -1,20 +1,22 @@
-const express = require('express');
-const progressController = require('../controllers/progressController')
+const express = require("express");
+const progressController = require("../controllers/progressController");
+
 const progressRouter = express.Router();
 
+// GET all
+progressRouter.get("/", progressController.findAll);
 
+// GET one
+progressRouter.get("/:id", progressController.findOne);
 
-progressRouter.get('/', progressController.findAll);
+// CREATE
+progressRouter.post("/", progressController.create);
 
-progressRouter.get('/:id', progressController.findOne);
+// UPDATE
+progressRouter.patch("/:id", progressController.update);
+progressRouter.put("/:id", progressController.update);
 
-progressRouter.post('/',  progressController.create)
+// DELETE
+progressRouter.delete("/:id", progressController.delete);
 
-progressRouter.delete('/:id', progressController.delete);
-
-progressRouter.patch('/', progressController.update);
-
-progressRouter.put('/', progressController.update);
-
-
-module.exports =  progressRouter ;
+module.exports = progressRouter;
