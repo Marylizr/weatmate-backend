@@ -1,37 +1,90 @@
-const express = require('express');
-const eventController = require('../controllers/eventController');
-const authenticateTrainer = require('../auth/authenticateTrainer'); // Middleware for trainers
-const { authMiddleware } = require('../auth/authMiddleware'); // General authentication
+// backend/router/eventRouter.js
+const express = require("express");
 const eventRouter = express.Router();
 
-//  Get all events (Accessible to authenticated users)
-eventRouter.get('/', authMiddleware, eventController.findAll);
+const eventController = require("../controllers/eventController");
+const { authMiddleware, requireVerified } = require("../auth/authMiddleware");
+const { allowRoles } = require("../auth/allowRoles");
 
-//  Get a single event by ID
-eventRouter.get('/:id', authMiddleware, eventController.findOne);
+// ORDER IMPORTANTE:
+// rutas específicas primero, luego /:id
 
-// Create a new event (Only accessible to authenticated trainers)
-eventRouter.post('/', authenticateTrainer, authMiddleware, eventController.create);
+// List events (scoped by role inside controller)
+eventRouter.get("/", authMiddleware, eventController.findAll);
 
-//  Delete an event by ID (Only accessible to authenticated trainers)
-eventRouter.delete('/:id', authenticateTrainer, eventController.delete);
+// Get events for a specific user (used by ClientList)
+eventRouter.get(
+  "/user/:userId",
+  authMiddleware,
+  eventController.getUserEventsByUserId
+);
 
-//  Update an event by ID (Only accessible to authenticated trainers)
-eventRouter.put('/:id', authenticateTrainer, eventController.update);
+// Create event (admin or personal-trainer)
+eventRouter.post(
+  "/",
+  authMiddleware,
+  requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  eventController.create
+);
 
-//  Update an event partially by ID (Only accessible to authenticated trainers)
-eventRouter.patch('/:id', authenticateTrainer, eventController.update);
+// Send notifications (admin or personal-trainer)
+eventRouter.post(
+  "/notify",
+  authMiddleware,
+  requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  eventController.sendEventNotifications
+);
 
-//  Confirm or Decline an Event (Accessible to assigned users)
-eventRouter.post('/:id/confirm', authMiddleware, eventController.confirmEvent);
+// Get single event
+eventRouter.get("/:id", authMiddleware, eventController.findOne);
 
-//  Reschedule an event (Only accessible to authenticated trainers)
-eventRouter.put('/:id/reschedule', authenticateTrainer, eventController.rescheduleEvent);
+// Delete event
+eventRouter.delete(
+  "/:id",
+  authMiddleware,
+  requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  eventController.delete
+);
 
-//  Update event status (Mark as completed or canceled) (Trainers only)
-eventRouter.put('/:id/status', authenticateTrainer, eventController.updateEventStatus);
+// Update event
+eventRouter.put(
+  "/:id",
+  authMiddleware,
+  requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  eventController.update
+);
 
-// Send notifications for upcoming events (Trainers/Admins only)
-eventRouter.post('/notify', authenticateTrainer, eventController.sendEventNotifications);
+eventRouter.patch(
+  "/:id",
+  authMiddleware,
+  requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  eventController.update
+);
+
+// Reschedule
+eventRouter.put(
+  "/:id/reschedule",
+  authMiddleware,
+  requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  eventController.rescheduleEvent
+);
+
+// Update status (completed/canceled/pending)
+eventRouter.put(
+  "/:id/status",
+  authMiddleware,
+  requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  eventController.updateEventStatus
+);
+
+// Confirm/Decline (assigned user OR event owner/admin)
+eventRouter.post("/:id/confirm", authMiddleware, eventController.confirmEvent);
 
 module.exports = { eventRouter };

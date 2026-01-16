@@ -5,7 +5,7 @@ const roundSchema = new Schema({
   weight: Number,
   unit: {
     type: String,
-    enum: ["kg", "lb"], // Ensures only kg or lb are stored
+    enum: ["kg", "lb"],
     default: "kg",
   },
 });
@@ -15,12 +15,10 @@ const favSchema = new Schema({
   type: String,
   workoutName: String,
   description: String,
-  rounds: [roundSchema], // Array of rounds
+  rounds: [roundSchema],
   date: { type: Date, default: Date.now },
   picture: String,
   video: String,
 });
 
-const Fav = model("fav", favSchema);
-
-module.exports = Fav;
+module.exports = model("fav", favSchema);

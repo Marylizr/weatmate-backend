@@ -1,29 +1,45 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/userModel'); 
+const jwt = require("jsonwebtoken");
+const User = require("../models/userModel");
 
 const authenticateTrainer = async (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1]; 
+  const authHeader = req.headers.authorization;
 
-  if (!token) {
-    return res.status(401).json({ message: "Unauthorized - No token provided" });
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res
+      .status(401)
+      .json({ message: "Unauthorized - No token provided" });
   }
 
-  try {
-    // Verify the JWT token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Find the trainer by decoded id
-    const trainer = await User.findById(decoded.id);
+  const token = authHeader.split(" ")[1];
 
-    if (!trainer) {
-      return res.status(404).json({ message: "Trainer not found" });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findById(decoded.id).select("_id role trainerId");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    // Attach trainer info to the request for further use in the controller
-    req.trainer = trainer;
-    next(); // Continue to the next middleware/controller
+    // Admin bypass
+    if (user.role === "admin") {
+      req.user = user;
+      return next();
+    }
+
+    // Trainer allowed
+    if (user.role === "trainer") {
+      req.user = user;
+      req.trainer = user;
+      return next();
+    }
+
+    // Anyone else blocked
+    return res.status(403).json({
+      message: "Access denied. Trainers or Admins only.",
+    });
   } catch (error) {
-    res.status(401).json({ message: "Invalid token", error: error.message });
+    return res.status(401).json({ message: "Invalid token" });
   }
 };
 
