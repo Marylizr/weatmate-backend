@@ -1,90 +1,90 @@
 const PreWorkout = require("../models/preWorkoutModel");
 
-// Crear una nueva rutina asignada
-exports.create = async (req, res) => {
-  try {
-    let payload = req.body;
 
-    // Si viene un solo plan, lo envolvemos en array
-    if (!Array.isArray(payload)) {
-      payload = [payload];
+exports.findAll = async (req, res) => {
+  try {
+    const { userId, start, end } = req.query;
+    const filter = {};
+
+    if (userId) filter.userId = userId;
+
+    if (start || end) {
+      filter.date = {};
+      if (start) filter.date.$gte = new Date(start);
+      if (end) filter.date.$lte = new Date(end);
     }
 
-    const savedPlans = [];
+    const plans = await PreWorkout.find(filter).sort({ date: 1 });
+    res.status(200).json(plans);
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Unable to retrieve plans", error: err.message });
+  }
+};
 
-    for (const plan of payload) {
-      // Si el payload contiene una lista de workouts, es un plan nuevo
-      if (plan.workouts && Array.isArray(plan.workouts)) {
-        for (const workout of plan.workouts) {
-          const newWorkout = new PreWorkout({
-            name: plan.planName || plan.name || "Unnamed Plan",
-            infotype: "workouts",
-            subCategory: workout.subCategory || "basic",
-            date: plan.startDate || new Date(),
-            picture: workout.picture || "",
-            content: workout.content || "No content provided",
-          });
+exports.create = async (req, res) => {
+  try {
+    const { userId, trainerId, planName, startDate, endDate, workouts } =
+      req.body;
 
-          const saved = await newWorkout.save();
-          savedPlans.push(saved);
-        }
-      } else {
-        // Caso antiguo (payload directo tipo workout)
-        if (
-          !plan.name ||
-          !plan.infotype ||
-          !plan.content ||
-          !plan.subCategory
-        ) {
-          throw new Error(`Invalid workout data: ${JSON.stringify(plan)}`);
-        }
+    if (!userId || !trainerId) {
+      return res
+        .status(400)
+        .json({ message: "userId and trainerId are required" });
+    }
 
-        const exists = await PreWorkout.findOne({
-          name: plan.name,
-          infotype: plan.infotype,
-          content: plan.content,
-          subCategory: plan.subCategory,
+    if (!Array.isArray(workouts) || workouts.length === 0) {
+      return res.status(400).json({ message: "workouts[] is required" });
+    }
+
+    if (!startDate) {
+      return res.status(400).json({ message: "startDate is required" });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate || startDate);
+
+    const isValid = (d) => d instanceof Date && !Number.isNaN(d.getTime());
+    if (!isValid(start) || !isValid(end)) {
+      return res.status(400).json({ message: "Invalid startDate/endDate" });
+    }
+
+    const dates = [];
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      dates.push(new Date(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const docs = [];
+    for (const day of dates) {
+      for (const w of workouts) {
+        docs.push({
+          userId,
+          trainerId,
+          planName,
+          startDate: start,
+          endDate: end,
+          date: day,
+          picture: w.picture || "",
+          content: w.content || "",
+          subCategory: w.subCategory || "beginner",
+          name: w.workoutId || "assigned-workout",
         });
-
-        if (exists) continue;
-
-        const newPreWorkout = new PreWorkout({
-          name: plan.name,
-          infotype: plan.infotype,
-          subCategory: plan.subCategory,
-          date: plan.date || new Date(),
-          picture: plan.picture,
-          content: plan.content,
-        });
-
-        const saved = await newPreWorkout.save();
-        savedPlans.push(saved);
       }
     }
 
-    res.status(201).json({
-      message: "Workout(s) saved successfully.",
-      data: savedPlans,
-    });
-  } catch (error) {
-    console.error("Error in /preWorkout create:", error.message);
+    const saved = await PreWorkout.insertMany(docs);
+    res.status(201).json(saved);
+  } catch (err) {
     res
       .status(500)
-      .json({ error: "An error occurred while creating preWorkouts." });
+      .json({ message: "Unable to create plan", error: err.message });
   }
 };
 
-// Obtener todos los planes
-exports.findAll = async (req, res) => {
-  try {
-    const plans = await PreWorkout.find()
-      .populate("userId", "name email")
-      .populate("trainerId", "name email");
-    res.status(200).json(plans);
-  } catch (error) {
-    res.status(500).json({ error: "Error fetching preworkouts." });
-  }
-};
+
 
 // Obtener plan por ID
 exports.findOne = async (req, res) => {

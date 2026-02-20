@@ -15,6 +15,8 @@ const verifyEmailController = require("../controllers/verifyEmailController");
 const menstrualCycleController = require("../controllers/menstrualCycleController");
 const passwordController = require("../controllers/passwordController");
 const nutritionController = require("../controllers/nutritionController");
+const searchController = require("../controllers/searchController");
+const notificationController = require("../controllers/notificationController");
 
 module.exports = {
   addWorkoutController,
@@ -34,4 +36,6 @@ module.exports = {
   menstrualCycleController,
   passwordController,
   nutritionController,
+  searchController,
+  notificationController,
 };

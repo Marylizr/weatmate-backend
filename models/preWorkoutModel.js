@@ -1,28 +1,41 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
-const PreWorkoutSchema = new Schema({
-  name: { type: String, required: true, trim: true },
-  infotype: { type: String, enum: ["workouts"], required: true },
-  subCategory: {
-    type: String,
-    enum: ["basic", "medium", "advanced"],
-    required: true,
+// Standard levels across the app: beginner | intermediate | advanced
+// Legacy values supported: basic -> beginner, medium -> intermediate
+const normalizeLevel = (v) => {
+  if (!v) return v;
+  const value = String(v).toLowerCase().trim();
+  if (value === "basic") return "beginner";
+  if (value === "medium") return "intermediate";
+  return value;
+};
+
+const preWorkoutSchema = new Schema(
+  {
+    name: String,
+    infotype: { type: String, default: "workout-plan" },
+
+    subCategory: {
+      type: String,
+      enum: ["beginner", "intermediate", "advanced"],
+      default: "beginner",
+      set: normalizeLevel,
+    },
+
+    date: { type: Date, required: true }, // IMPORTANT: daily assignment
+
+    picture: String,
+    content: String,
+
+    trainerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+
+    planName: String,
+    startDate: Date,
+    endDate: Date,
   },
-  date: { type: Date, default: Date.now },
-  picture: { type: String, trim: true },
-  content: { type: String, required: true },
+  { timestamps: true }
+);
 
-  // Relación real
-  trainerId: { type: Schema.Types.ObjectId, ref: "User" },
-  userId: { type: Schema.Types.ObjectId, ref: "User" },
-
-  startDate: { type: Date },
-  endDate: { type: Date },
-  planName: { type: String, trim: true },
-});
-
-PreWorkoutSchema.index({ userId: 1, subCategory: 1 });
-
-const PreWorkout = mongoose.model("PreWorkout", PreWorkoutSchema);
-module.exports = PreWorkout;
+module.exports = mongoose.model("preWorkout", preWorkoutSchema);

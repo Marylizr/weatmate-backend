@@ -35,11 +35,11 @@ exports.create = async (req, res) => {
   try {
     const {
       type,
+      subType,
       workoutName,
       description,
       reps,
       series,
-      lifted,
       picture,
       video,
       workoutLevel,
@@ -47,18 +47,19 @@ exports.create = async (req, res) => {
       isGeneral,
     } = req.body;
 
+    // al crear:
     const newWorkout = new AddWork({
       type,
+      subType,
       workoutName,
       description,
       reps,
       series,
-      lifted: lifted || 0,
       picture,
       video,
       workoutLevel,
-      trainerId: trainerId,
-      isGeneral: isGeneral || false,
+      trainerId,
+      isGeneral,
     });
 
     const savedWorkout = await newWorkout.save();

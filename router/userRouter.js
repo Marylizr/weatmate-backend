@@ -1,6 +1,9 @@
 const express = require("express");
 const userController = require("../controllers/usercontroller");
 const userRouter = express.Router();
+
+const allowRoles = require("../auth/allowRoles");
+const canAccessUserByRole = require("../auth/canAccessUserByRole");
 const {
   authMiddleware,
   IsAdmin,
@@ -9,22 +12,23 @@ const {
 const authenticateTrainer = require("../auth/authenticateTrainer");
 
 // ==============================
-//  AUTH ROUTES
+// AUTH / PROFILE ROUTES
 // ==============================
 
 // Logged-in user's data
 userRouter.get("/me", authMiddleware, requireVerified, userController.findOne);
 
-// Create new user by Admin
-userRouter.post("/", authMiddleware, IsAdmin, userController.createUserByAdmin);
-
 // Public sign up
 userRouter.post("/create-profile", userController.create);
+
+// Create new user by Admin
+userRouter.post("/", authMiddleware, IsAdmin, userController.createUserByAdmin);
 
 // Get all trainers (public)
 userRouter.get("/trainers", userController.getAllTrainers);
 
-// Send verification email
+// Send verification email (if you call it like: POST /user/send-verification { userId } or similar)
+// If your frontend calls it differently, keep the function but adjust route later.
 userRouter.post("/send-verification", userController.sendVerificationEmail);
 
 // Confirm email
@@ -34,123 +38,161 @@ userRouter.get("/verify-email", userController.verifyEmail);
 userRouter.get(
   "/",
   authMiddleware,
+  requireVerified,
+  allowRoles("admin", "personal-trainer"),
   authenticateTrainer,
-  userController.findAll
+  userController.findAll,
 );
 
 // ==============================
-//  SPECIFIC QUERY ROUTES
-//  (email, name, etc.)
+// SELF UPDATE (legacy + nice-to-have)
+// ==============================
+
+userRouter.put("/", authMiddleware, requireVerified, userController.update); // update self (legacy)
+userRouter.put("/me", authMiddleware, requireVerified, userController.update); // update self (nice)
+
+// ==============================
+// FEMALE PROFILE ROUTES (IMPORTANT: before /:id)
+// ==============================
+
+// Self updates femaleProfile
+userRouter.put(
+  "/femaleProfile",
+  authMiddleware,
+  requireVerified,
+  userController.updateMyFemaleProfile,
+);
+
+// Trainer/Admin updates client's femaleProfile
+userRouter.patch(
+  "/:id/femaleProfile",
+  authMiddleware,
+  requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  canAccessUserByRole,
+  userController.updateClientFemaleProfile,
+);
+
+// Client snapshot for Training dashboard (trainer/admin)
+userRouter.get(
+  "/clientSnapshot/:id",
+  authMiddleware,
+  requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  canAccessUserByRole,
+  userController.getClientSnapshot,
+);
+
+// ==============================
+// SPECIFIC QUERY ROUTES
 // ==============================
 
 userRouter.get(
   "/email/:id",
   authMiddleware,
   requireVerified,
-  userController.findOneEmail
+  userController.findOneEmail,
 );
 
 userRouter.get(
   "/name/:id",
   authMiddleware,
   requireVerified,
-  userController.findOneName
+  userController.findOneName,
 );
 
-userRouter.get(
-  "/id/:email",
+// ==============================
+// ADMIN/TRAINER UPDATE / DELETE
+// ==============================
+
+// Admin OR Trainer (only assigned clients) can update user by id
+userRouter.put(
+  "/:id",
   authMiddleware,
   requireVerified,
-  userController.findOneEmail
+  allowRoles("admin", "personal-trainer"),
+  canAccessUserByRole,
+  userController.update,
 );
-
-// ==============================
-//  ADMIN UPDATE / DELETE ROUTES
-// ==============================
-
-// Admin updates any user
-userRouter.put("/:id", authMiddleware, IsAdmin, userController.update);
 
 // Admin deletes a user
 userRouter.delete("/:id", authMiddleware, IsAdmin, userController.delete);
 
 // ==============================
-//  USER SELF-UPDATE ROUTE
-// ==============================
-
-// Logged-in user updates their own profile
-userRouter.put("/", authMiddleware, requireVerified, userController.update);
-
-// ==============================
-//  SESSION NOTES ROUTES
+// SESSION NOTES ROUTES
 // ==============================
 
 userRouter.post(
   "/:id/session-notes",
   authMiddleware,
   requireVerified,
-  userController.addSessionNote
+  userController.addSessionNote,
 );
 
 userRouter.get(
   "/:id/session-notes",
   authMiddleware,
   requireVerified,
-  userController.getSessionNotes
+  userController.getSessionNotes,
 );
 
 // ==============================
-//  PREFERENCES ROUTES
+// PREFERENCES ROUTES
 // ==============================
 
 userRouter.get(
   "/:id/user-preferences",
   authMiddleware,
   requireVerified,
-  userController.getUserPreferences
+  userController.getUserPreferences,
 );
 
 userRouter.post(
   "/:id/user-preferences",
   authMiddleware,
   requireVerified,
-  userController.addUserPreference
+  userController.addUserPreference,
 );
 
 // ==============================
-//  MEDICAL HISTORY ROUTES
+// MEDICAL HISTORY ROUTES
 // ==============================
 
 userRouter.post(
   "/:id/medical-history",
   authMiddleware,
   requireVerified,
-  userController.addMedicalHistory
+  userController.addMedicalHistory,
 );
 
 userRouter.get(
   "/:id/medical-history",
   authMiddleware,
   requireVerified,
-  userController.getMedicalHistory
+  userController.getMedicalHistory,
 );
 
 // ==============================
-//  NUTRITION HISTORY
+// NUTRITION HISTORY
 // ==============================
 
-userRouter.post("/:id/nutrition-history", userController.addNutritionHistory);
+userRouter.post(
+  "/:id/nutrition-history",
+  authMiddleware,
+  requireVerified,
+  userController.addNutritionHistory,
+);
 
 // ==============================
-//  IMPORTANT — KEEP THIS LAST
-//  Dynamic GET by ID
+// IMPORTANT — KEEP THIS LAST
+// Dynamic GET by ID
 // ==============================
 
 userRouter.get(
   "/:id",
   authMiddleware,
   requireVerified,
-  userController.findOneId
+  userController.findOneId,
 );
 
 module.exports = userRouter;

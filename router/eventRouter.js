@@ -1,37 +1,156 @@
-const express = require('express');
-const eventController = require('../controllers/eventController');
-const authenticateTrainer = require('../auth/authenticateTrainer'); // Middleware for trainers
-const { authMiddleware } = require('../auth/authMiddleware'); // General authentication
+const express = require("express");
+const eventController = require("../controllers/eventController");
+const { authMiddleware } = require("../auth/authMiddleware");
+const allowRoles = require("../auth/allowRoles");
+
 const eventRouter = express.Router();
 
-//  Get all events (Accessible to authenticated users)
-eventRouter.get('/', authMiddleware, eventController.findAll);
+/*
+  IMPORTANT:
+  Put static routes BEFORE '/:id' routes to avoid collisions.
+*/
 
-//  Get a single event by ID
-eventRouter.get('/:id', authMiddleware, eventController.findOne);
+/* -------------------------
+   Notifications / Utilities
+-------------------------- */
 
-// Create a new event (Only accessible to authenticated trainers)
-eventRouter.post('/', authenticateTrainer, authMiddleware, eventController.create);
+// Send email notifications for upcoming events (Admin/Trainer only)
+eventRouter.post(
+  "/notify",
+  authMiddleware,
+  allowRoles("admin", "personal-trainer"),
+  eventController.sendEventNotifications,
+);
 
-//  Delete an event by ID (Only accessible to authenticated trainers)
-eventRouter.delete('/:id', authenticateTrainer, eventController.delete);
+/* -------------------------
+   Core CRUD
+-------------------------- */
 
-//  Update an event by ID (Only accessible to authenticated trainers)
-eventRouter.put('/:id', authenticateTrainer, eventController.update);
+// Get all events (Authenticated users)
+// Supports query: ?userId=... or ?trainerId=...
+eventRouter.get("/", authMiddleware, eventController.findAll);
 
-//  Update an event partially by ID (Only accessible to authenticated trainers)
-eventRouter.patch('/:id', authenticateTrainer, eventController.update);
+// Create a new event (Admin/Trainer)
+eventRouter.post(
+  "/",
+  authMiddleware,
+  allowRoles("admin", "personal-trainer"),
+  eventController.create,
+);
 
-//  Confirm or Decline an Event (Accessible to assigned users)
-eventRouter.post('/:id/confirm', authMiddleware, eventController.confirmEvent);
+/* -------------------------
+   User-specific helpers
+-------------------------- */
 
-//  Reschedule an event (Only accessible to authenticated trainers)
-eventRouter.put('/:id/reschedule', authenticateTrainer, eventController.rescheduleEvent);
+// Get events assigned to logged user + unreadCount
+eventRouter.get(
+  "/user",
+  authMiddleware,
+  allowRoles("admin", "personal-trainer", "basic"),
+  eventController.getUserEvents,
+);
 
-//  Update event status (Mark as completed or canceled) (Trainers only)
-eventRouter.put('/:id/status', authenticateTrainer, eventController.updateEventStatus);
+/* -------------------------
+   Invite responses (User)
+-------------------------- */
 
-// Send notifications for upcoming events (Trainers/Admins only)
-eventRouter.post('/notify', authenticateTrainer, eventController.sendEventNotifications);
+// Accept invite (adds to confirmedUsers)
+eventRouter.post(
+  "/:id/confirm",
+  authMiddleware,
+  allowRoles("admin", "personal-trainer", "basic"),
+  eventController.confirmEvent,
+);
+
+// Decline invite (adds to declinedUsers)
+eventRouter.post(
+  "/:id/decline",
+  authMiddleware,
+  allowRoles("admin", "personal-trainer", "basic"),
+  eventController.declineEvent,
+);
+
+/* -------------------------
+   Reschedule request flow
+-------------------------- */
+
+// Client requests a new date/time
+eventRouter.post(
+  "/:id/reschedule-request",
+  authMiddleware,
+  allowRoles("admin", "personal-trainer", "basic"),
+  eventController.requestReschedule,
+);
+
+// Trainer accepts proposed date/time
+eventRouter.post(
+  "/:id/reschedule-accept",
+  authMiddleware,
+  allowRoles("admin", "personal-trainer"),
+  eventController.acceptReschedule,
+);
+
+// Trainer rejects request
+eventRouter.post(
+  "/:id/reschedule-reject",
+  authMiddleware,
+  allowRoles("admin", "personal-trainer"),
+  eventController.rejectReschedule,
+);
+
+/* -------------------------
+   Legacy / direct actions
+-------------------------- */
+
+// Direct reschedule (Trainer/Admin) preserving history
+eventRouter.put(
+  "/:id/reschedule",
+  authMiddleware,
+  allowRoles("admin", "personal-trainer"),
+  eventController.rescheduleEvent,
+);
+
+// Email confirmation flow (if you still use customerEmail confirmations)
+eventRouter.post(
+  "/:id/email-confirm",
+  authMiddleware,
+  allowRoles("admin", "personal-trainer"),
+  eventController.confirmEventEmail,
+);
+
+// Update status (pending/completed/canceled)
+eventRouter.put(
+  "/:id/status",
+  authMiddleware,
+  allowRoles("admin", "personal-trainer"),
+  eventController.updateEventStatus,
+);
+
+/* -------------------------
+   Single event CRUD by id
+-------------------------- */
+
+eventRouter.get("/:id", authMiddleware, eventController.findOne);
+
+eventRouter.put(
+  "/:id",
+  authMiddleware,
+  allowRoles("admin", "personal-trainer"),
+  eventController.update,
+);
+
+eventRouter.patch(
+  "/:id",
+  authMiddleware,
+  allowRoles("admin", "personal-trainer"),
+  eventController.update,
+);
+
+eventRouter.delete(
+  "/:id",
+  authMiddleware,
+  allowRoles("admin", "personal-trainer"),
+  eventController.delete,
+);
 
 module.exports = { eventRouter };

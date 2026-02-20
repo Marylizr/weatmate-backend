@@ -2,28 +2,255 @@ require("dotenv").config();
 const User = require("../models/userModel");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { validationResult } = require("express-validator");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const { google } = require("googleapis");
 const mongoose = require("mongoose");
 
-exports.generateToken = (userId, role, gender) => {
-  // Generate a JWT with the user ID, role, and gender
-  return jwt.sign(
-    { id: userId, role, gender }, // Include user details in the payload
-    process.env.JWT_SECRET, // Secret from .env file
-    { expiresIn: "1h" } // Token expires in 1 hour
-  );
+// ------------------------------------------------------
+// Helpers
+// ------------------------------------------------------
+const safeObj = (v) =>
+  v && typeof v === "object" && !Array.isArray(v) ? v : {};
+
+// ---------- FLAGS (REDS / LEA / Amenorrhea) ----------
+const computeEnergyFlags = (energyAvailability = {}) => {
+  const score =
+    (energyAvailability.recentWeightLoss ? 1 : 0) +
+    (energyAvailability.restrictiveDieting ? 1 : 0) +
+    (energyAvailability.fearOfWeightGain ? 1 : 0) +
+    (energyAvailability.lowEnergy ? 1 : 0) +
+    (energyAvailability.frequentIllness ? 1 : 0) +
+    (energyAvailability.coldIntolerance ? 1 : 0) +
+    (energyAvailability.hairLoss ? 1 : 0) +
+    (energyAvailability.stressFractureHistory ? 2 : 0) +
+    (energyAvailability.injuryFrequencyHigh ? 1 : 0) +
+    (energyAvailability.missedPeriods3PlusMonths ? 2 : 0);
+
+  const amenorrheaRisk =
+    energyAvailability.missedPeriods3PlusMonths === true ||
+    (typeof energyAvailability.cyclesPerYear === "number" &&
+      energyAvailability.cyclesPerYear > 0 &&
+      energyAvailability.cyclesPerYear < 9);
+
+  const redSRisk = score >= 4 || amenorrheaRisk;
+  const leaRisk = score >= 3;
+
+  let rationale = `score=${score}`;
+  if (amenorrheaRisk) rationale += " + amenorrhea_indicators";
+
+  return {
+    redS_risk: redSRisk,
+    lea_risk: leaRisk,
+    amenorrhea_risk: amenorrheaRisk,
+    lastCalculatedAt: new Date(),
+    rationale,
+  };
 };
 
+// Trainer can only access users whose trainerId === trainerUserId
+const canTrainerAccessClient = async (trainerUserId, clientId) => {
+  const client = await User.findById(clientId).select("trainerId role");
+  if (!client) return { ok: false, status: 404, message: "User not found." };
+
+  if (String(client.trainerId || "") !== String(trainerUserId)) {
+    return { ok: false, status: 403, message: "Access denied." };
+  }
+
+  return { ok: true, client };
+};
+
+// ---------- FEMALE PROFILE SANITIZER (partial patch) ----------
+const sanitizeFemaleProfile = (incoming = {}) => {
+  const fp = safeObj(incoming);
+  const out = {};
+
+  if (typeof fp.lifeStage !== "undefined") out.lifeStage = fp.lifeStage;
+  if (typeof fp.cycleTrackingEnabled !== "undefined")
+    out.cycleTrackingEnabled = !!fp.cycleTrackingEnabled;
+
+  if (typeof fp.cycle !== "undefined") {
+    const c = safeObj(fp.cycle);
+    out.cycle = {};
+
+    const cycleKeys = [
+      "avgCycleLengthDays",
+      "avgBleedDays",
+      "lastPeriodStartDate",
+      "currentPhase",
+      "estimatedOvulationDay",
+      "estimatedOvulationDate",
+      "isIrregular",
+      "cyclesPerYear",
+    ];
+
+    cycleKeys.forEach((k) => {
+      if (typeof c[k] !== "undefined") out.cycle[k] = c[k];
+    });
+
+    if (typeof c.symptoms !== "undefined") {
+      const s = safeObj(c.symptoms);
+      out.cycle.symptoms = {};
+      const symptomKeys = [
+        "cramps",
+        "headache",
+        "bloating",
+        "breastTenderness",
+        "moodChanges",
+        "fatigue",
+        "sleepIssues",
+        "lowBackPain",
+        "acne",
+        "foodCravings",
+      ];
+      symptomKeys.forEach((k) => {
+        if (typeof s[k] !== "undefined") out.cycle.symptoms[k] = s[k];
+      });
+    }
+  }
+
+  if (typeof fp.contraception !== "undefined") {
+    const cc = safeObj(fp.contraception);
+    out.contraception = {};
+    const keys = ["usesHormonalContraception", "method", "startedAt", "notes"];
+    keys.forEach((k) => {
+      if (typeof cc[k] !== "undefined") {
+        out.contraception[k] =
+          k === "usesHormonalContraception" ? !!cc[k] : cc[k];
+      }
+    });
+  }
+
+  if (typeof fp.hormoneTherapy !== "undefined") {
+    const ht = safeObj(fp.hormoneTherapy);
+    out.hormoneTherapy = {};
+    const keys = ["usesHRT", "type", "startedAt", "notes"];
+    keys.forEach((k) => {
+      if (typeof ht[k] !== "undefined") {
+        out.hormoneTherapy[k] = k === "usesHRT" ? !!ht[k] : ht[k];
+      }
+    });
+  }
+
+  if (typeof fp.energyAvailability !== "undefined") {
+    const ea = safeObj(fp.energyAvailability);
+    out.energyAvailability = {};
+    const keys = [
+      "recentWeightLoss",
+      "restrictiveDieting",
+      "fearOfWeightGain",
+      "lowEnergy",
+      "frequentIllness",
+      "coldIntolerance",
+      "hairLoss",
+      "stressFractureHistory",
+      "injuryFrequencyHigh",
+      "missedPeriods3PlusMonths",
+      "cyclesPerYear",
+      "notes",
+    ];
+    keys.forEach((k) => {
+      if (typeof ea[k] !== "undefined") out.energyAvailability[k] = ea[k];
+    });
+  }
+
+  if (typeof fp.clinicalFlags !== "undefined") {
+    const f = safeObj(fp.clinicalFlags);
+    out.clinicalFlags = {};
+    const keys = [
+      "hasREDS",
+      "hasLEA",
+      "suspectedLEA",
+      "hasAmenorrhea",
+      "hasOligomenorrhea",
+      "hasPCOS",
+      "hasEndometriosis",
+      "hasPMDD",
+      "pelvicFloorConcerns",
+      "vasomotorSymptoms",
+    ];
+    keys.forEach((k) => {
+      if (typeof f[k] !== "undefined") out.clinicalFlags[k] = !!f[k];
+    });
+  }
+
+  if (typeof fp.trainingConsiderations !== "undefined") {
+    const t = safeObj(fp.trainingConsiderations);
+    out.trainingConsiderations = {};
+    const keys = [
+      "preferredIntensityOnLuteal",
+      "painLimitationsNotes",
+      "fatigueNotes",
+    ];
+    keys.forEach((k) => {
+      if (typeof t[k] !== "undefined") out.trainingConsiderations[k] = t[k];
+    });
+  }
+
+  out.updatedAt = new Date();
+  return out;
+};
+
+// ---------- FEMALE PROFILE DEEP MERGE ----------
+const mergeFemaleProfile = (prev = {}, patch = {}) => {
+  const p = prev?.toObject?.() || prev || {};
+
+  return {
+    ...p,
+    ...patch,
+    cycle: {
+      ...(p.cycle || {}),
+      ...(patch.cycle || {}),
+      symptoms: {
+        ...(p.cycle?.symptoms || {}),
+        ...(patch.cycle?.symptoms || {}),
+      },
+    },
+    contraception: {
+      ...(p.contraception || {}),
+      ...(patch.contraception || {}),
+    },
+    hormoneTherapy: {
+      ...(p.hormoneTherapy || {}),
+      ...(patch.hormoneTherapy || {}),
+    },
+    clinicalFlags: {
+      ...(p.clinicalFlags || {}),
+      ...(patch.clinicalFlags || {}),
+    },
+    energyAvailability: {
+      ...(p.energyAvailability || {}),
+      ...(patch.energyAvailability || {}),
+      flags: {
+        ...(p.energyAvailability?.flags || {}),
+        ...(patch.energyAvailability?.flags || {}),
+      },
+    },
+    trainingConsiderations: {
+      ...(p.trainingConsiderations || {}),
+      ...(patch.trainingConsiderations || {}),
+    },
+  };
+};
+
+// ------------------------------------------------------
+// Auth token helper
+// ------------------------------------------------------
+exports.generateToken = (userId, role, gender) => {
+  return jwt.sign({ id: userId, role, gender }, process.env.JWT_SECRET, {
+    expiresIn: "1h",
+  });
+};
+
+// ------------------------------------------------------
+// Basic user reads
+// ------------------------------------------------------
 exports.findOne = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password"); // Exclude password from response
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    res.json({
+    const user = await User.findById(req.user.id).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    return res.json({
       id: user._id,
       name: user.name,
       email: user.email,
@@ -41,19 +268,20 @@ exports.findOne = async (req, res) => {
       bio: user.bio,
       location: user.location,
       trainerId: user.trainerId,
+      femaleProfile: user.femaleProfile || null,
     });
   } catch (error) {
     console.error("Error fetching user:", error);
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
 exports.findAll = async (req, res) => {
   try {
     const users = await User.find().select("-password");
-    res.status(200).json(users);
+    return res.status(200).json(users);
   } catch (err) {
-    res
+    return res
       .status(500)
       .json({ message: "Unable to retrieve users", error: err.message });
   }
@@ -62,41 +290,40 @@ exports.findAll = async (req, res) => {
 exports.getAllTrainers = async (req, res) => {
   try {
     const trainers = await User.find({ role: "personal-trainer" }).select(
-      "name email _id"
+      "name email _id",
     );
-    res.status(200).json(trainers);
+    return res.status(200).json(trainers);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Unable to retrieve trainers", error: error.message });
+    return res.status(500).json({
+      message: "Unable to retrieve trainers",
+      error: error.message,
+    });
   }
 };
 
 exports.findOneName = async (req, res) => {
   try {
     const userData = await User.findById(req.params.id).select("name");
-    if (!userData) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    res.status(200).json(userData.name);
+    if (!userData) return res.status(404).json({ message: "User not found" });
+    return res.status(200).json(userData.name);
   } catch (err) {
-    res
-      .status(500)
-      .json({ message: "Unable to retrieve user name", error: err.message });
+    return res.status(500).json({
+      message: "Unable to retrieve user name",
+      error: err.message,
+    });
   }
 };
 
 exports.findOneEmail = async (req, res) => {
   try {
     const userData = await User.findById(req.params.id).select("email");
-    if (!userData) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    res.status(200).json(userData.email);
+    if (!userData) return res.status(404).json({ message: "User not found" });
+    return res.status(200).json(userData.email);
   } catch (err) {
-    res
-      .status(500)
-      .json({ message: "Unable to retrieve user email", error: err.message });
+    return res.status(500).json({
+      message: "Unable to retrieve user email",
+      error: err.message,
+    });
   }
 };
 
@@ -105,48 +332,42 @@ exports.findOneId = async (req, res) => {
     const { id } = req.params;
 
     if (id === "me") {
-      console.log("Session User for /me:", req.sessionUser);
       if (!req.sessionUser) {
         return res.status(404).json({ message: "User not found" });
       }
-      return res.status(200).json(req.sessionUser);
-    } else {
-      const user = await User.findById(id).select("-password");
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      return res.status(200).json(user);
+      return res.status(200).json({
+        ...req.sessionUser,
+        femaleProfile: req.sessionUser.femaleProfile || null,
+      });
     }
+
+    const user = await User.findById(id).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    return res.status(200).json({
+      ...user.toObject(),
+      femaleProfile: user.femaleProfile || null,
+    });
   } catch (err) {
     console.error("Error retrieving user:", err.message);
-    res
+    return res
       .status(500)
       .json({ message: "Unable to retrieve user", error: err.message });
   }
 };
 
-//AUTH
-
+// ------------------------------------------------------
+// OAuth / Email verification
+// ------------------------------------------------------
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
+  process.env.GOOGLE_REDIRECT_URI,
 );
 
-// Generate Google authorization URL
-const authUrl = oauth2Client.generateAuthUrl({
-  access_type: "offline",
-  prompt: "consent",
-  scope: ["https://www.googleapis.com/auth/gmail.send"],
-});
-
-// OAuth2 callback for exchanging authorization code
 exports.oauth2callback = async (req, res) => {
   const { code } = req.query;
-
-  if (!code) {
-    return res.status(400).send("Authorization code not provided.");
-  }
+  if (!code) return res.status(400).send("Authorization code not provided.");
 
   try {
     const { tokens } = await oauth2Client.getToken(code);
@@ -156,52 +377,44 @@ exports.oauth2callback = async (req, res) => {
       process.env.OAUTH_REFRESH_TOKEN = tokens.refresh_token;
     } else {
       console.warn(
-        'No refresh token received. Ensure "prompt=consent" is used in authUrl.'
+        'No refresh token received. Ensure "prompt=consent" is used in authUrl.',
       );
     }
 
     return res.status(200).send("Authorization successful! Tokens acquired.");
   } catch (error) {
     console.error("Error exchanging code for tokens:", error.message);
-    res.status(500).send("Failed to exchange code for tokens.");
+    return res.status(500).send("Failed to exchange code for tokens.");
   }
 };
 
-// Create transporter with nodemailer
 async function createTransporter() {
-  try {
-    if (!process.env.OAUTH_REFRESH_TOKEN) {
-      throw new Error(
-        "Refresh token is missing. Reauthorize the app to obtain it."
-      );
-    }
-
-    oauth2Client.setCredentials({
-      refresh_token: process.env.OAUTH_REFRESH_TOKEN,
-    });
-
-    const { token: accessToken } = await oauth2Client.getAccessToken();
-
-    return nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      secure: true,
-      service: "gmail",
-      auth: {
-        user: process.env.GOOGLE_EMAIL_USER,
-        pass: process.env.GOOGLE_EMAIL_PASSWORD,
-        accessToken,
-      },
-    });
-  } catch (error) {
-    console.error("Error creating transporter:", error.message);
-    throw new Error("Failed to create transporter.");
+  if (!process.env.OAUTH_REFRESH_TOKEN) {
+    throw new Error(
+      "Refresh token is missing. Reauthorize the app to obtain it.",
+    );
   }
+
+  oauth2Client.setCredentials({
+    refresh_token: process.env.OAUTH_REFRESH_TOKEN,
+  });
+
+  const { token: accessToken } = await oauth2Client.getAccessToken();
+
+  return nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    secure: true,
+    service: "gmail",
+    auth: {
+      user: process.env.GOOGLE_EMAIL_USER,
+      pass: process.env.GOOGLE_EMAIL_PASSWORD,
+      accessToken,
+    },
+  });
 }
 
-// Confirm email verification
 exports.verifyEmail = async (req, res) => {
   const { token } = req.query;
-
   if (!token) {
     return res
       .status(400)
@@ -210,13 +423,9 @@ exports.verifyEmail = async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("Decoded token:", decoded);
 
-    // Ensure we use `_id` for MongoDB lookup
     const user = await User.findById(decoded.userId);
-
     if (!user) {
-      console.error(`User not found for ID: ${decoded.userId}`);
       return res
         .status(404)
         .json({ success: false, message: "User not found." });
@@ -250,56 +459,76 @@ exports.verifyEmail = async (req, res) => {
   }
 };
 
-// Send verification email
-exports.sendVerificationEmail = async (user) => {
-  if (!user.email) {
-    console.error("No email found for user:", user);
-    return false;
-  }
-
-  const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-    expiresIn: "1d",
-  });
-  const verificationLink = `${process.env.BASE_URL}/verify-email?token=${token}`;
-
-  const mailOptions = {
-    from: process.env.GOOGLE_EMAIL_USER,
-    to: user.email,
-    subject: "Verify Your Email",
-    html: `
-      <p>Click the link below to verify your email address:</p>
-      <a href="${verificationLink}">${verificationLink}</a>
-    `,
-  };
-
+// If you want this route to work as POST /user/send-verification,
+// your frontend should pass a userId OR you should infer from auth.
+// Leaving it compatible: if req.body.userId exists, use it.
+exports.sendVerificationEmail = async (req, res) => {
   try {
-    console.log("Creating email transporter...");
+    const userId = req.body?.userId;
+
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Valid userId is required." });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found." });
+    }
+
+    if (user.isVerified) {
+      return res.status(200).json({
+        success: true,
+        message: "Email is already verified.",
+      });
+    }
+
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
+
+    const verificationLink = `${process.env.BASE_URL}/verify-email?token=${token}`;
+
+    const mailOptions = {
+      from: process.env.GOOGLE_EMAIL_USER,
+      to: user.email,
+      subject: "Verify Your Email",
+      html: `
+        <p>Click the link below to verify your email address:</p>
+        <a href="${verificationLink}">${verificationLink}</a>
+      `,
+    };
+
     const transporter = await createTransporter();
     await transporter.sendMail(mailOptions);
-    console.log("Verification email sent to:", user.email);
-    return true;
+
+    return res.status(200).json({
+      success: true,
+      message: "Verification email sent.",
+    });
   } catch (error) {
     console.error("Error sending verification email:", error.message);
-    return false;
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send verification email.",
+      error: error.message,
+    });
   }
 };
 
-//CREATE
+// ------------------------------------------------------
+// Create user (admin)
+// ------------------------------------------------------
 exports.createUserByAdmin = async (req, res) => {
-  console.log(
-    "Checking `req.user` inside `createUserByAdmin` function:",
-    req.user
-  );
-
   try {
     if (!req.user || req.user.role !== "admin") {
-      console.log("Unauthorized: Only admins can create users.");
       return res
         .status(403)
         .json({ message: "Unauthorized: Only admins can create users." });
     }
-
-    console.log("Incoming Request Body:", req.body);
 
     const {
       name,
@@ -329,21 +558,21 @@ exports.createUserByAdmin = async (req, res) => {
       typeof password !== "string" ||
       password.trim().length < 8
     ) {
-      console.log("Error: Invalid password input.");
       return res.status(400).json({
         message: "Password is required and must be at least 8 characters long.",
       });
     }
 
-    console.log("Checking for existing user with email:", email);
-    const existingUser = await User.findOne({ email });
+    const normalizedEmail = String(email || "")
+      .trim()
+      .toLowerCase();
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
-      console.log("Email already exists:", email);
       return res.status(409).json({ message: "Email already in use" });
     }
 
     if (trainerId) {
-      console.log("Validating Trainer ID:", trainerId);
       if (!mongoose.Types.ObjectId.isValid(trainerId)) {
         return res.status(400).json({ message: "Invalid trainer ID format" });
       }
@@ -353,22 +582,16 @@ exports.createUserByAdmin = async (req, res) => {
       }
     }
 
-    console.log("Assigning Role...");
     const allowedRoles = ["basic", "admin", "personal-trainer"];
     const assignedRole = allowedRoles.includes(role) ? role : "basic";
-
-    // Automatically verify admins and personal trainers
     const isVerified =
       assignedRole === "admin" || assignedRole === "personal-trainer";
 
-    console.log("Hashing Password...");
     const passwordHashed = await bcrypt.hash(password.trim(), 10);
-    console.log("Password Hashed Successfully");
 
-    console.log("Preparing User Data...");
     const newUserData = {
       name,
-      email,
+      email: normalizedEmail,
       password: passwordHashed,
       age,
       weight,
@@ -382,13 +605,13 @@ exports.createUserByAdmin = async (req, res) => {
       medicalHistoryFile,
       preferences,
       sessionNotes,
-      isVerified, // Automatically set verification for admins & trainers
+      isVerified,
     };
 
     if (assignedRole === "personal-trainer") {
       newUserData.personalTrainerInfo = {
         name,
-        email,
+        email: normalizedEmail,
         degree,
         experience,
         specializations,
@@ -397,18 +620,14 @@ exports.createUserByAdmin = async (req, res) => {
       };
     }
 
-    console.log("Creating User in Database...");
     const newUser = new User(newUserData);
     await newUser.save();
-    console.log("User Successfully Created:", newUser);
 
-    console.log("Generating JWT Token...");
     const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-    console.log("JWT Token Created Successfully:", token);
 
-    res.status(201).json({
+    return res.status(201).json({
       token,
       id: newUser._id,
       role: newUser.role,
@@ -419,14 +638,15 @@ exports.createUserByAdmin = async (req, res) => {
     });
   } catch (err) {
     console.error("Error creating user:", err);
-    res
+    return res
       .status(500)
       .json({ message: "Unable to create user", error: err.message });
   }
 };
 
-// Create a new user
-
+// ------------------------------------------------------
+// Public signup
+// ------------------------------------------------------
 exports.create = async (req, res) => {
   try {
     const {
@@ -437,208 +657,362 @@ exports.create = async (req, res) => {
       weight,
       height,
       goal,
-      role,
       gender,
-      trainerId,
       fitness_level,
     } = req.body;
+
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return res.status(400).json({ message: "Name is required." });
+    }
+
+    if (!email || typeof email !== "string" || !/^\S+@\S+\.\S+$/.test(email)) {
+      return res.status(400).json({ message: "Valid email is required." });
+    }
 
     if (
       !password ||
       typeof password !== "string" ||
       password.trim().length < 8
     ) {
-      console.log("Error: Invalid password input.");
       return res.status(400).json({
         message: "Password is required and must be at least 8 characters long.",
       });
     }
 
-    console.log("Checking for existing user with email:", email);
-    const existingUser = await User.findOne({ email });
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
-      console.log("Email already exists:", email);
       return res.status(409).json({ message: "Email already in use" });
     }
 
-    if (trainerId) {
-      console.log("Validating Trainer ID:", trainerId);
-      if (!mongoose.Types.ObjectId.isValid(trainerId)) {
-        return res.status(400).json({ message: "Invalid trainer ID format" });
-      }
-      const trainer = await User.findById(trainerId);
-      if (!trainer || trainer.role !== "personal-trainer") {
-        return res.status(400).json({ message: "Invalid trainer ID" });
-      }
-    }
-
-    console.log("Assigning Role...");
-    const allowedRoles = ["basic", "admin", "personal-trainer"];
-    const assignedRole = allowedRoles.includes(role) ? role : "basic";
-
-    console.log("Hashing Password...");
+    const assignedRole = "basic";
     const passwordHashed = await bcrypt.hash(password.trim(), 10);
-    console.log("Password Hashed Successfully");
 
-    console.log("Preparing User Data...");
     const newUserData = {
-      name,
-      email,
+      name: name.trim(),
+      email: normalizedEmail,
       password: passwordHashed,
-      age,
-      weight,
-      height,
-      goal,
-      gender,
+      age: age ?? undefined,
+      weight: weight ?? undefined,
+      height: height ?? undefined,
+      goal: goal ?? undefined,
+      gender: gender ?? undefined,
       role: assignedRole,
-      trainerId,
-      fitness_level,
-      isVerified: false, // Ensure users need verification
+      fitness_level: fitness_level ?? undefined,
+      isVerified: false,
     };
 
-    console.log("Creating User in Database...");
     const newUser = new User(newUserData);
     await newUser.save();
-    console.log("User Successfully Created:", newUser);
 
-    console.log("Generating JWT Token...");
     const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-    console.log("JWT Token Created Successfully:", token);
 
-    console.log("Sending Verification Email...");
-    // Send verification email if necessary
-    if (!newUser.isVerified) {
-      try {
-        await exports.sendVerificationEmail(newUser);
-      } catch (error) {
-        console.error("Failed to send verification email:", error.message);
-      }
-    }
-
-    res.status(201).json({
+    return res.status(201).json({
       token,
       id: newUser._id,
       role: newUser.role,
+      gender: newUser.gender,
       name: newUser.name,
       message:
         "Account created successfully. Please verify your email to activate your account.",
     });
   } catch (err) {
     console.error("Error creating user:", err);
-    res
+    return res
       .status(500)
       .json({ message: "Unable to create user", error: err.message });
   }
 };
 
+// ------------------------------------------------------
+// Delete user
+// ------------------------------------------------------
 exports.delete = async (req, res) => {
   try {
     const id = req.params.id;
     await User.deleteOne({ _id: id });
-    res.status(200).json({ message: "User was deleted successfully" });
+    return res.status(200).json({ message: "User was deleted successfully" });
   } catch (err) {
-    res
+    return res
       .status(500)
       .json({ message: "Unable to delete user", error: err.message });
   }
 };
 
-// Update user profile
+// ------------------------------------------------------
+// Update user profile (PUT /user, /user/me, /user/:id)
+// ------------------------------------------------------
 exports.update = async (req, res) => {
   try {
-    const { id } = req.params;
-    const loggedInUser = req.sessionUser;
+    const paramId = req.params?.id;
+    const authUserId = req.user?.id || req.user?._id;
+    const isAdmin = req.user?.role === "admin";
 
-    console.log("Incoming Update Request:", req.body);
+    let targetUserId = null;
 
-    if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({ message: "No update data provided" });
-    }
-
-    let userToUpdate;
-
-    if (id) {
-      if (!loggedInUser || loggedInUser.role !== "admin") {
-        return res.status(403).json({
-          message:
-            "Access denied. Only admins can update other users' profiles.",
-        });
-      }
-      userToUpdate = await User.findById(id);
-      if (!userToUpdate) {
-        return res.status(404).json({ message: "User not found" });
+    if (paramId && paramId !== "me") {
+      targetUserId = String(paramId);
+      if (!isAdmin && authUserId && String(authUserId) !== targetUserId) {
+        return res.status(403).json({ message: "Access denied." });
       }
     } else {
-      userToUpdate = loggedInUser;
+      if (!authUserId)
+        return res.status(401).json({ message: "Unauthorized." });
+      targetUserId = String(authUserId);
     }
 
-    const { password, email, ...updateData } = req.body;
+    if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+      return res.status(400).json({ message: "Invalid user ID." });
+    }
 
-    if (email && email !== userToUpdate.email) {
-      const existingUser = await User.findOne({ email });
-      if (
-        existingUser &&
-        existingUser._id.toString() !== userToUpdate._id.toString()
-      ) {
-        return res.status(409).json({ message: "Email already in use" });
+    const updateData = { ...req.body };
+
+    if (!isAdmin) {
+      if (typeof updateData.trainerId !== "undefined") {
+        return res.status(403).json({ message: "Access denied. Admins only." });
       }
-      updateData.email = email;
+      if (typeof updateData.role !== "undefined") {
+        return res.status(403).json({ message: "Access denied. Admins only." });
+      }
+      if (typeof updateData.isVerified !== "undefined") {
+        return res.status(403).json({ message: "Access denied. Admins only." });
+      }
     }
 
-    if (password) {
-      const salt = await bcrypt.genSalt(10);
-      updateData.password = await bcrypt.hash(password, salt);
+    if (Object.prototype.hasOwnProperty.call(updateData, "password")) {
+      const raw =
+        typeof updateData.password === "string"
+          ? updateData.password.trim()
+          : "";
+
+      if (!raw) {
+        delete updateData.password;
+      } else {
+        if (raw.length < 8) {
+          return res.status(400).json({
+            message: "Password must be at least 8 characters long.",
+          });
+        }
+        updateData.password = await bcrypt.hash(raw, 10);
+      }
     }
 
-    Object.assign(userToUpdate, updateData);
+    if (typeof updateData.email === "string") {
+      updateData.email = updateData.email.trim().toLowerCase();
+    }
+    if (typeof updateData.name === "string") {
+      updateData.name = updateData.name.trim();
+    }
 
-    await userToUpdate.save();
-
-    console.log("User Updated Successfully:", userToUpdate);
-
-    res.status(200).json({
-      message: "User has been updated successfully",
-      updatedUser: userToUpdate,
+    Object.keys(updateData).forEach((k) => {
+      if (typeof updateData[k] === "undefined") delete updateData[k];
     });
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: "No fields to update." });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(targetUserId, updateData, {
+      new: true,
+      runValidators: true,
+      context: "query",
+      select: "-password",
+    });
+
+    if (!updatedUser)
+      return res.status(404).json({ message: "User not found." });
+
+    return res.status(200).json(updatedUser);
   } catch (err) {
-    console.error("Error updating user:", err.message);
-    res
-      .status(500)
-      .json({ message: "Unable to update user", error: err.message });
+    if (err?.code === 11000 && err?.keyPattern?.email) {
+      return res.status(409).json({ message: "Email already in use." });
+    }
+
+    console.error("Error updating user:", err);
+    return res.status(500).json({
+      message: "Unable to update user",
+      error: err.message,
+    });
   }
 };
 
-exports.addSessionNote = async (req, res) => {
-  console.log("Request Params:", req.params); // Should log the user ID
-  console.log("Request Headers:", req.headers); // Should include Content-Type: application/json
-  console.log("Request Body:", req.body); // Should contain { note, date }
+// ------------------------------------------------------
+// Female profile endpoints (NO duplicate export names)
+// ------------------------------------------------------
 
+// PUT /user/femaleProfile (self)
+// Body: { femaleProfile: { ...patch } }
+exports.updateMyFemaleProfile = async (req, res) => {
+  try {
+    const authUserId = req.user?.id || req.user?._id;
+    if (!authUserId) return res.status(401).json({ message: "Unauthorized." });
+
+    const incoming = req.body?.femaleProfile;
+    if (!incoming || typeof incoming !== "object") {
+      return res.status(400).json({ message: "femaleProfile is required." });
+    }
+
+    const patch = sanitizeFemaleProfile(incoming);
+
+    if (patch.energyAvailability) {
+      patch.energyAvailability.flags = computeEnergyFlags(
+        patch.energyAvailability,
+      );
+      patch.energyAvailability.lastUpdatedAt = new Date();
+    }
+
+    const user = await User.findById(authUserId).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    user.femaleProfile = mergeFemaleProfile(user.femaleProfile, patch);
+    await user.save();
+
+    return res.status(200).json({ femaleProfile: user.femaleProfile });
+  } catch (err) {
+    console.error("updateMyFemaleProfile error:", err);
+    return res.status(500).json({
+      message: "Unable to update female profile",
+      error: err.message,
+    });
+  }
+};
+
+// PATCH /user/:id/femaleProfile (trainer/admin)
+// Body: { femaleProfile: { ...patch } }
+exports.updateClientFemaleProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid user ID." });
+    }
+
+    const isAdmin = req.user?.role === "admin";
+    const isTrainer = req.user?.role === "personal-trainer";
+    if (!isAdmin && !isTrainer) {
+      return res.status(403).json({ message: "Access denied." });
+    }
+
+    if (!isAdmin) {
+      const trainerId = req.user?.id || req.user?._id;
+      const access = await canTrainerAccessClient(trainerId, id);
+      if (!access.ok) {
+        return res.status(access.status).json({ message: access.message });
+      }
+    }
+
+    const incoming = req.body?.femaleProfile;
+    if (!incoming || typeof incoming !== "object") {
+      return res.status(400).json({ message: "femaleProfile is required." });
+    }
+
+    const patch = sanitizeFemaleProfile(incoming);
+
+    if (patch.energyAvailability) {
+      patch.energyAvailability.flags = computeEnergyFlags(
+        patch.energyAvailability,
+      );
+      patch.energyAvailability.lastUpdatedAt = new Date();
+    }
+
+    const user = await User.findById(id).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    user.femaleProfile = mergeFemaleProfile(user.femaleProfile, patch);
+    await user.save();
+
+    return res.status(200).json({
+      message: "femaleProfile updated successfully",
+      femaleProfile: user.femaleProfile,
+    });
+  } catch (err) {
+    console.error("updateClientFemaleProfile error:", err);
+    return res.status(500).json({
+      message: "Unable to update femaleProfile",
+      error: err.message,
+    });
+  }
+};
+
+// GET /user/clientSnapshot/:id (trainer/admin)
+exports.getClientSnapshot = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid user ID." });
+    }
+
+    const isAdmin = req.user?.role === "admin";
+    const isTrainer = req.user?.role === "personal-trainer";
+    if (!isAdmin && !isTrainer) {
+      return res.status(403).json({ message: "Access denied." });
+    }
+
+    if (!isAdmin) {
+      const trainerId = req.user?.id || req.user?._id;
+      const access = await canTrainerAccessClient(trainerId, id);
+      if (!access.ok) {
+        return res.status(access.status).json({ message: access.message });
+      }
+    }
+
+    const user = await User.findById(id).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    return res.status(200).json({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      gender: user.gender,
+      fitness_level: user.fitness_level,
+      goal: user.goal,
+      age: user.age,
+      weight: user.weight,
+      height: user.height,
+      trainerId: user.trainerId,
+      femaleProfile: user.femaleProfile || null,
+    });
+  } catch (err) {
+    console.error("getClientSnapshot error:", err);
+    return res.status(500).json({
+      message: "Unable to retrieve client snapshot",
+      error: err.message,
+    });
+  }
+};
+
+// ------------------------------------------------------
+// Session notes
+// ------------------------------------------------------
+exports.addSessionNote = async (req, res) => {
   const { note, date } = req.body;
 
   if (!note || !date) {
-    console.log("Validation failed:", { note, date });
     return res.status(400).json({ message: "Note and date are required." });
   }
 
   try {
     const user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
+    if (!user) return res.status(404).json({ message: "User not found." });
 
     user.sessionNotes.push({ note, date });
     await user.save();
-    res.status(201).json({
+
+    return res.status(201).json({
       message: "Session note added successfully.",
       sessionNotes: user.sessionNotes,
     });
   } catch (error) {
     console.error("Error adding session note:", error);
-    res
-      .status(500)
-      .json({ message: "Error adding session note.", error: error.message });
+    return res.status(500).json({
+      message: "Error adding session note.",
+      error: error.message,
+    });
   }
 };
 
@@ -647,48 +1021,44 @@ exports.getSessionNotes = async (req, res) => {
 
   try {
     const user = await User.findById(id).select("sessionNotes");
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
+    if (!user) return res.status(404).json({ message: "User not found." });
 
-    res.status(200).json(user.sessionNotes);
+    return res.status(200).json(user.sessionNotes);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching session notes.", error: error.message });
+    return res.status(500).json({
+      message: "Error fetching session notes.",
+      error: error.message,
+    });
   }
 };
 
-// Controller to handle medical history
+// ------------------------------------------------------
+// Medical history
+// ------------------------------------------------------
 exports.addMedicalHistory = async (req, res) => {
-  console.log("Request Params:", req.params); // Should log the user ID
-  console.log("Request Headers:", req.headers); // Should include Content-Type: application/json
-  console.log("Incoming Request Body:", req.body); // Should contain { history, date }
-
   const { history, date } = req.body;
 
   if (!history || !date) {
-    console.log("Validation failed:", { history, date });
     return res.status(400).json({ message: "History and date are required." });
   }
 
   try {
     const user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
+    if (!user) return res.status(404).json({ message: "User not found." });
 
     user.medicalHistory.push({ history, date });
     await user.save();
-    res.status(201).json({
+
+    return res.status(201).json({
       message: "Medical record added successfully.",
       medicalHistory: user.medicalHistory,
     });
   } catch (error) {
     console.error("Error adding medical record:", error);
-    res
-      .status(500)
-      .json({ message: "Error adding medical record.", error: error.message });
+    return res.status(500).json({
+      message: "Error adding medical record.",
+      error: error.message,
+    });
   }
 };
 
@@ -697,30 +1067,25 @@ exports.getMedicalHistory = async (req, res) => {
 
   try {
     const user = await User.findById(id).select("medicalHistory");
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
+    if (!user) return res.status(404).json({ message: "User not found." });
 
-    res.status(200).json(user.medicalHistory);
+    return res.status(200).json(user.medicalHistory);
   } catch (error) {
     console.error("Error fetching medical history:", error);
-    res.status(500).json({
+    return res.status(500).json({
       message: "Error fetching medical history.",
       error: error.message,
     });
   }
 };
 
-// Add or Update User Preferences
+// ------------------------------------------------------
+// Preferences
+// ------------------------------------------------------
 exports.addUserPreference = async (req, res) => {
-  console.log("Request Params:", req.params); // Logs the user ID
-  console.log("Request Headers:", req.headers); // Logs request headers
-  console.log("Request Body:", req.body); // Logs parsed body
-
   const { preference, date } = req.body;
 
   if (!preference || !date) {
-    console.log("Validation failed:", { preference, date });
     return res
       .status(400)
       .json({ message: "Preference and date are required." });
@@ -728,21 +1093,21 @@ exports.addUserPreference = async (req, res) => {
 
   try {
     const user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
+    if (!user) return res.status(404).json({ message: "User not found." });
 
     user.preferences.push({ preference, date });
     await user.save();
-    res.status(201).json({
+
+    return res.status(201).json({
       message: "Preference added successfully.",
       preferences: user.preferences,
     });
   } catch (error) {
     console.error("Error adding user preference:", error);
-    res
-      .status(500)
-      .json({ message: "Error adding user preference.", error: error.message });
+    return res.status(500).json({
+      message: "Error adding user preference.",
+      error: error.message,
+    });
   }
 };
 
@@ -751,35 +1116,42 @@ exports.getUserPreferences = async (req, res) => {
 
   try {
     const user = await User.findById(id).select("preferences");
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
+    if (!user) return res.status(404).json({ message: "User not found." });
 
-    res.status(200).json(user.preferences);
+    return res.status(200).json(user.preferences);
   } catch (error) {
-    console.error("Error fetching medical history:", error);
-    res.status(500).json({
-      message: "Error fetching medical history.",
+    console.error("Error fetching preferences:", error);
+    return res.status(500).json({
+      message: "Error fetching preferences.",
       error: error.message,
     });
   }
 };
 
+// ------------------------------------------------------
+// Register user (legacy flow)
+// ------------------------------------------------------
 exports.registerUser = async (req, res) => {
   const { name, email, password, role } = req.body;
 
   try {
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({
+      email: String(email || "")
+        .trim()
+        .toLowerCase(),
+    });
     if (existingUser) {
       return res.status(409).json({ message: "Email already in use." });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const emailToken = crypto.randomBytes(32).toString("hex"); // Generate a unique token
+    const hashedPassword = await bcrypt.hash(String(password || ""), 10);
+    const emailToken = crypto.randomBytes(32).toString("hex");
 
     const newUser = new User({
       name,
-      email,
+      email: String(email || "")
+        .trim()
+        .toLowerCase(),
       password: hashedPassword,
       role,
       emailToken,
@@ -787,65 +1159,64 @@ exports.registerUser = async (req, res) => {
 
     await newUser.save();
 
-    // Send confirmation email
     const transporter = nodemailer.createTransport({
-      service: "gmail", // Adjust this based on your email provider
+      service: "gmail",
       auth: {
-        user: process.env.EMAIL, // Your email address
-        pass: process.env.EMAIL_PASSWORD, // Your email password or app-specific password
+        user: process.env.EMAIL,
+        pass: process.env.EMAIL_PASSWORD,
       },
     });
 
     const confirmationUrl = `${process.env.FRONTEND_URL}/confirm-email/${emailToken}`;
-    const mailOptions = {
+
+    await transporter.sendMail({
       from: process.env.EMAIL,
-      to: email,
+      to: newUser.email,
       subject: "Email Confirmation",
       text: `Please confirm your email by clicking the link: ${confirmationUrl}`,
       html: `<p>Please confirm your email by clicking the link below:</p><a href="${confirmationUrl}">Confirm Email</a>`,
-    };
+    });
 
-    await transporter.sendMail(mailOptions);
-
-    res.status(201).json({
+    return res.status(201).json({
       message:
         "User registered successfully. Please confirm your email to activate your account.",
     });
   } catch (err) {
     console.error("Error registering user:", err);
-    res
+    return res
       .status(500)
       .json({ message: "Error registering user.", error: err.message });
   }
 };
 
-// Add Nutrition History
+// ------------------------------------------------------
+// Nutrition history
+// ------------------------------------------------------
 exports.addNutritionHistory = async (req, res) => {
   try {
-    const { id } = req.params; // user ID
+    const { id } = req.params;
     const { calories, protein, carbs, fats, goal } = req.body;
 
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const newEntry = {
+    user.nutritionHistory.push({
       date: new Date(),
       calories,
       protein,
       carbs,
       fats,
       goal,
-    };
+    });
 
-    user.nutritionHistory.push(newEntry);
     await user.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Nutrition history updated successfully",
       nutritionHistory: user.nutritionHistory,
     });
   } catch (error) {
     console.error("Error adding nutrition history:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
