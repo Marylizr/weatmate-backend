@@ -1,16 +1,29 @@
 const SaveWork = require("../models/saveWorkoutModel");
 const mongoose = require("mongoose");
 
-// ========== FIND ALL ==========
+// ==============================
+// FIND ALL (SAFE)
+// ==============================
 exports.findAll = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const userId = req.user._id;
+    const role = req.user.role;
 
-    if (!userId || userId === "undefined") {
-      return res.status(200).json([]);
+    let query = {};
+
+    if (role === "admin") {
+      // Admin ve todo
+      query = {};
+    } else if (role === "personal-trainer") {
+      // Trainer → solo sus clientes (si quieres ampliar esto luego)
+      query = { userId };
+    } else {
+      // Usuario normal → solo sus workouts
+      query = { userId };
     }
 
-    const workouts = await SaveWork.find({ userId }).sort({ date: -1 });
+    const workouts = await SaveWork.find(query).sort({ date: -1 });
+
     return res.status(200).json(workouts);
   } catch (err) {
     console.error("Error in findAll:", err);
@@ -18,18 +31,28 @@ exports.findAll = async (req, res) => {
   }
 };
 
-// ========== FIND ONE BY ID ==========
+// ==============================
+// FIND ONE (SECURE)
+// ==============================
 exports.findOne = async (req, res) => {
   try {
     const id = req.params.id;
+    const userId = req.user._id;
+    const role = req.user.role;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid workout ID" });
     }
 
     const workout = await SaveWork.findById(id);
+
     if (!workout) {
       return res.status(404).json({ message: "Workout not found" });
+    }
+
+    // 🔒 CONTROL DE ACCESO
+    if (role !== "admin" && workout.userId?.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     return res.status(200).json(workout);
@@ -39,31 +62,50 @@ exports.findOne = async (req, res) => {
   }
 };
 
-// ========== CREATE WORKOUT ==========
+// ==============================
+// CREATE (SECURE)
+// ==============================
 exports.create = async (req, res) => {
   try {
-    const data = req.body;
+    const userId = req.user._id;
 
-    const dataPosted = {
-      userId: data.userId,
-      name: data.name,
-      type: data.type,
-      workoutName: data.workoutName,
-      description: data.description,
-      reps: data.reps,
-      lifted: data.lifted,
-      date: data.date || new Date(),
-      series: data.series,
-      picture: data.picture,
-      video: data.video,
-    };
+    const {
+      name,
+      type,
+      workoutName,
+      description,
+      reps,
+      lifted,
+      series,
+      picture,
+      video,
+    } = req.body;
 
-    const newWorkout = new SaveWork(dataPosted);
+    // 🔒 VALIDACIÓN MÍNIMA
+    if (!workoutName) {
+      return res.status(400).json({
+        message: "workoutName is required",
+      });
+    }
+
+    const newWorkout = new SaveWork({
+      userId, // 🔥 SIEMPRE desde token
+      name: name || "",
+      type: type || "",
+      workoutName,
+      description: description || "",
+      reps: reps || null,
+      lifted: lifted || null,
+      series: series || null,
+      picture: picture || "",
+      video: video || "",
+      date: new Date(),
+    });
+
     await newWorkout.save();
 
-    console.log("Workout created:", newWorkout);
     return res.status(201).json({
-      message: "Your new workout was created successfully",
+      message: "Workout created successfully",
       newWorkout,
     });
   } catch (err) {
@@ -72,27 +114,36 @@ exports.create = async (req, res) => {
   }
 };
 
-// ========== UPDATE WORKOUT ==========
+// ==============================
+// UPDATE (SECURE)
+// ==============================
 exports.update = async (req, res) => {
   try {
     const id = req.params.id;
+    const userId = req.user._id;
+    const role = req.user.role;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid workout ID" });
     }
 
-    const data = req.body;
+    const workout = await SaveWork.findById(id);
 
-    const updatedWorkout = await SaveWork.findByIdAndUpdate(id, data, {
-      new: true,
-    });
-
-    if (!updatedWorkout) {
+    if (!workout) {
       return res.status(404).json({ message: "Workout not found" });
     }
 
+    // 🔒 CONTROL DE ACCESO
+    if (role !== "admin" && workout.userId?.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const updatedWorkout = await SaveWork.findByIdAndUpdate(id, req.body, {
+      new: true,
+    });
+
     return res.status(200).json({
-      message: "Your workout has been updated successfully",
+      message: "Workout updated successfully",
       updatedWorkout,
     });
   } catch (err) {
@@ -101,23 +152,35 @@ exports.update = async (req, res) => {
   }
 };
 
-// ========== DELETE WORKOUT ==========
+// ==============================
+// DELETE (SECURE)
+// ==============================
 exports.delete = async (req, res) => {
   try {
     const id = req.params.id;
+    const userId = req.user._id;
+    const role = req.user.role;
 
-    // Validación nueva — evita 500 por CastError
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid workout ID" });
     }
 
-    const result = await SaveWork.findByIdAndDelete(id);
+    const workout = await SaveWork.findById(id);
 
-    if (!result) {
+    if (!workout) {
       return res.status(404).json({ message: "Workout not found" });
     }
 
-    return res.status(204).send();
+    // 🔒 CONTROL DE ACCESO
+    if (role !== "admin" && workout.userId?.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    await workout.deleteOne();
+
+    return res.status(200).json({
+      message: "Workout deleted successfully",
+    });
   } catch (err) {
     console.error("Error in delete:", err);
     return res.status(500).json({ error: err.message });
