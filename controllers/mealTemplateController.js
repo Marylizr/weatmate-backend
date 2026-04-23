@@ -1,5 +1,6 @@
 const MealTemplate = require("../models/MealTemplate");
 
+
 exports.createTemplate = async (req, res) => {
   try {
     const { name, meals } = req.body;
