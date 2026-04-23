@@ -1,17 +1,27 @@
 const MealTemplate = require("../models/MealTemplate");
 
-
 exports.createTemplate = async (req, res) => {
   try {
-    const { name, meals } = req.body;
+    console.log("BODY RAW:", req.body);
 
-    if (!name || !meals) {
-      return res.status(400).json({ msg: "Missing data" });
+    const body = req.body || {};
+
+    const name = body.name;
+    const foods = body.foods;
+    const totalMacros = body.totalMacros;
+
+    if (!name) {
+      return res.status(400).json({ msg: "Missing name" });
+    }
+
+    if (!Array.isArray(foods) || foods.length === 0) {
+      return res.status(400).json({ msg: "Foods invalid or empty" });
     }
 
     const template = await MealTemplate.create({
       name,
-      meals,
+      foods,
+      totalMacros,
       userId: req.user.id,
     });
 
@@ -21,7 +31,7 @@ exports.createTemplate = async (req, res) => {
     });
   } catch (err) {
     console.error("Error creating template:", err);
-    res.status(500).json({ msg: "Server error" });
+    res.status(500).json({ msg: err.message });
   }
 };
 

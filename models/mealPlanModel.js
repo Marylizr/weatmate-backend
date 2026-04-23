@@ -1,39 +1,31 @@
 const mongoose = require("mongoose");
-const Schema = mongoose.Schema;
 
-const MealPlanSchema = new Schema({
-  name: {
-    type: String,
-    required: true, // Ensure userName is mandatory
-    trim: true,
+const mealTemplateSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+
+  foods: [
+    {
+      name: String,
+      portion: Object,
+      quantity: Number,
+      protein: Number,
+      carbs: Number,
+      fats: Number,
+      calories: Number,
+    },
+  ],
+
+  totalMacros: {
+    protein: Number,
+    carbs: Number,
+    fats: Number,
+    calories: Number,
   },
-  infotype: {
-    type: String,
-    enum: ["recipes"], // Restrict to "workouts"
-    required: true,
-  },
-  subCategory: {
-    type: String,
-    enum: ["vegan", "vegetarian", "keto", "paleo", "gluten-free", "mediterranean", "low-carb"], // Restrict to predefined levels
-    required: true,
-  },
-  date: {
-    type: Date,
-    default: Date.now,
-  },
-  picture: {
-    type: String,
-    trim: true, // Ensure no extra whitespace
-  },
-  content: {
-    type: String,
-    required: true, // Ensure workout content is provided
+
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
   },
 });
 
-// Add indexing for better query performance
-MealPlanSchema.index({ userName: 1, subCategory: 1 });
-
-const MealPlan = mongoose.model("MealPlan", MealPlanSchema);
-
-module.exports = MealPlan;
+module.exports = mongoose.model("MealTemplate", mealTemplateSchema);
