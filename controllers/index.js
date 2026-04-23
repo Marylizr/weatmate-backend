@@ -16,6 +16,7 @@ const passwordController = require("../controllers/passwordController");
 const nutritionPlanController = require("../controllers/nutritionPlanController");
 const searchController = require("../controllers/searchController");
 const notificationController = require("../controllers/notificationController");
+const mealTemplateController = require("../controllers/mealTemplateController");
 
 module.exports = {
   addWorkoutController,
@@ -36,4 +37,5 @@ module.exports = {
   nutritionPlanController,
   searchController,
   notificationController,
+  mealTemplateController,
 };

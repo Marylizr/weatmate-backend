@@ -22,6 +22,7 @@ const clientProfileRouter = require("./clientProfileRouter");
 const trainerRouter = require("./trainerRouter");
 const trainingPlanRouter = require("./trainingPlanRouter.js");
 const notificationRouter = require("./notificationRoutes");
+const mealTemplateRouter = require("./mealTemplateRoutes");
 
 appRouter.use((req, res, next) => {
   console.log(` Request: ${req.method} ${req.originalUrl}`);
@@ -50,6 +51,7 @@ appRouter.use("/search", searchRouter);
 appRouter.use("/client-profiles", clientProfileRouter);
 appRouter.use("/trainer", trainerRouter);
 appRouter.use("/trainingPlan", trainingPlanRouter);
+appRouter.use("/meal-templates", mealTemplateRouter);
 
 appRouter.use((req, res) => {
   return res.status(404).json({ message: "Route not found" });

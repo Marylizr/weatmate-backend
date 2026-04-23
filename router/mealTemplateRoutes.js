@@ -3,9 +3,9 @@ const {
   createTemplate,
   getTemplates,
   deleteTemplate,
-} = require("../controllers/mealTemplateController.js");
+} = require("../controllers/mealTemplateController");
 
-const { authMiddleware } = require("../auth/authMiddleware.js");
+const { authMiddleware } = require("../auth/authMiddleware");
 
 const mealTemplateRouter = express.Router();
 
