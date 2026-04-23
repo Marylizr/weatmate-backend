@@ -16,7 +16,7 @@ const authenticateTrainer = require("../auth/authenticateTrainer");
 // ==============================
 
 // Logged-in user's data
-userRouter.get("/me", authMiddleware, requireVerified, userController.findOne);
+userRouter.get("/me", authMiddleware, userController.findOne);
 
 // Public sign up
 userRouter.post("/create-profile", userController.create);
@@ -57,17 +57,33 @@ userRouter.put("/me", authMiddleware, requireVerified, userController.update); /
 
 // Self updates femaleProfile
 userRouter.put(
-  "/femaleProfile",
+  "/cycle",
   authMiddleware,
   requireVerified,
-  userController.updateMyFemaleProfile,
+  userController.updateMyCycle,
+);
+
+userRouter.post(
+  "/cycle/log",
+  authMiddleware,
+  requireVerified,
+  userController.addMyCycleLog,
+);
+
+userRouter.get("/cycle/me", authMiddleware, userController.getMyCycle);
+
+userRouter.get(
+  "/:id/cycle",
+  authMiddleware,
+  allowRoles("admin", "personal-trainer"),
+  canAccessUserByRole,
+  userController.getUserCycle,
 );
 
 // Trainer/Admin updates client's femaleProfile
 userRouter.patch(
   "/:id/femaleProfile",
   authMiddleware,
-  requireVerified,
   allowRoles("admin", "personal-trainer"),
   canAccessUserByRole,
   userController.updateClientFemaleProfile,

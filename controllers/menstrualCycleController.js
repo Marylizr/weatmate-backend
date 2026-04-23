@@ -1,82 +1,130 @@
-const MenstrualCycle = require("../models/menstrualCycleModel");
+// controllers/menstrualCycleController.js
+
+const User = require("../models/userModel");
 const { buildInsights } = require("../services/cycleEngine");
 
-// CREATE / UPDATE CYCLE
+// CREATE / UPDATE CYCLE (SINGLE SOURCE OF TRUTH)
 exports.logCycle = async (req, res) => {
   try {
     const { userId, lastMenstruationDate, cycleLength } = req.body;
 
-    let cycle = await MenstrualCycle.findOne({ userId });
-
-    if (!cycle) {
-      cycle = new MenstrualCycle({
-        userId,
-        lastMenstruationDate,
-        cycleLength,
-      });
-    } else {
-      cycle.lastMenstruationDate = lastMenstruationDate;
-      cycle.cycleLength = cycleLength || cycle.cycleLength;
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
     }
 
-    cycle.insights = buildInsights(cycle);
-    cycle.updatedAt = new Date();
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-    await cycle.save();
+    const existingCycle = user?.femaleProfile?.cycleData || {};
 
-    res.status(200).json(cycle);
+    const updatedCycle = {
+      ...existingCycle,
+      lastMenstruationDate,
+      cycleLength: cycleLength || existingCycle.cycleLength || 28,
+      dailyLogs: existingCycle.dailyLogs || [],
+    };
+
+    const insights = buildInsights(updatedCycle);
+
+    const cleanCycle = {
+      ...updatedCycle,
+      insights,
+      updatedAt: new Date(),
+    };
+
+    await User.findByIdAndUpdate(userId, {
+      $set: {
+        "femaleProfile.cycleData": cleanCycle,
+      },
+    });
+
+    res.status(200).json(cleanCycle);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error logging cycle", error: error.message });
+    res.status(500).json({
+      message: "Error logging cycle",
+      error: error.message,
+    });
   }
 };
 
-// DAILY CHECK-IN (NUEVO)
+// DAILY CHECK-IN (SINGLE SOURCE)
 exports.addDailyLog = async (req, res) => {
   try {
     const { userId, energy, fatigue, sleep, performance, mood } = req.body;
 
-    const cycle = await MenstrualCycle.findOne({ userId });
-
-    if (!cycle) {
-      return res.status(404).json({ message: "Cycle not found" });
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
     }
 
-    cycle.dailyLogs.push({
-      energy,
-      fatigue,
-      sleep,
-      performance,
-      mood,
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const existingCycle = user?.femaleProfile?.cycleData || {};
+
+    const logs = existingCycle.dailyLogs || [];
+
+    const updatedLogs = [
+      ...logs,
+      {
+        energy,
+        fatigue,
+        sleep,
+        performance,
+        mood,
+        date: new Date(),
+      },
+    ];
+
+    const updatedCycle = {
+      ...existingCycle,
+      dailyLogs: updatedLogs,
+    };
+
+    const insights = buildInsights(updatedCycle);
+
+    const cleanCycle = {
+      ...updatedCycle,
+      insights,
+      updatedAt: new Date(),
+    };
+
+    await User.findByIdAndUpdate(userId, {
+      $set: {
+        "femaleProfile.cycleData": cleanCycle,
+      },
     });
 
-    cycle.insights = buildInsights(cycle);
-    cycle.updatedAt = new Date();
-
-    await cycle.save();
-
-    res.status(200).json(cycle);
+    res.status(200).json(cleanCycle);
   } catch (error) {
-    res.status(500).json({ message: "Error saving log", error: error.message });
+    res.status(500).json({
+      message: "Error saving log",
+      error: error.message,
+    });
   }
 };
 
-// GET LATEST
+// GET LATEST (ONLY FROM USER)
 exports.getLatestCycle = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const cycle = await MenstrualCycle.findOne({ userId });
+    const user = await User.findById(userId);
 
-    if (!cycle) {
-      return res.status(404).json({ message: "No cycle data found" });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    res.status(200).json(cycle);
+    const cycleData = user?.femaleProfile?.cycleData || {};
+
+    return res.status(200).json(cycleData);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error retrieving cycle data", error: error.message });
+    res.status(500).json({
+      message: "Error retrieving cycle data",
+      error: error.message,
+    });
   }
 };

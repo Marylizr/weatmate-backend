@@ -1,4 +1,5 @@
 const MoodTracker = require("../models/MoodTrackerModel");
+const User = require("../models/userModel");
 
 // CREATE
 exports.create = async (req, res) => {
@@ -16,7 +17,7 @@ exports.create = async (req, res) => {
       });
     }
 
-    // Normalizamos suggestions al tipo Array que pide el schema
+    // Normalizamos suggestions
     let safeSuggestions = [];
     if (Array.isArray(suggestions)) {
       safeSuggestions = suggestions;
@@ -43,6 +44,16 @@ exports.create = async (req, res) => {
       date: date ? new Date(date) : new Date(),
     });
 
+    // ✅ NEW: actualizar lastMoodEntry en el usuario
+    try {
+      await User.findByIdAndUpdate(userId, {
+        lastMoodEntry: new Date(),
+      });
+    } catch (err) {
+      console.error("Error updating lastMoodEntry:", err);
+      // no rompemos flujo si falla
+    }
+
     return res.status(201).json({
       success: true,
       message: "Mood logged successfully",
@@ -64,7 +75,7 @@ exports.findAll = async (req, res) => {
   }
 };
 
-// GET by userId (NECESARIO PARA EL DASHBOARD)
+// GET by userId
 exports.findByUser = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -94,7 +105,7 @@ exports.update = async (req, res) => {
     const updated = await MoodTracker.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true }
+      { new: true },
     );
     res.status(200).json(updated);
   } catch (error) {

@@ -6,6 +6,7 @@ const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const { google } = require("googleapis");
 const mongoose = require("mongoose");
+const { buildInsights } = require("../services/cycleEngine");
 
 // ------------------------------------------------------
 // Helpers
@@ -247,11 +248,21 @@ exports.generateToken = (userId, role, gender) => {
 // ------------------------------------------------------
 exports.findOne = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password");
-    if (!user) return res.status(404).json({ message: "User not found" });
+    // 🔥 FIX REAL → soporta ambos casos (id y _id)
+    const userId = req.user?.id || req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Invalid user session" });
+    }
+
+    const user = await User.findById(userId).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     return res.json({
-      id: user._id,
+      _id: user._id,
       name: user.name,
       email: user.email,
       image: user.image,
@@ -1218,5 +1229,312 @@ exports.addNutritionHistory = async (req, res) => {
   } catch (error) {
     console.error("Error adding nutrition history:", error);
     return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// ------------------------------------------------------
+// CYCLE SYSTEM (SINGLE SOURCE OF TRUTH - HARDENED)
+// ------------------------------------------------------
+
+const clone = (obj) => JSON.parse(JSON.stringify(obj || {}));
+
+// -----------------------------
+// BUILD INSIGHTS (INLINE SAFE)
+// -----------------------------
+const buildCycleInsights = (cycle) => {
+  const getCycleDay = (lastMenstruationDate) => {
+    if (!lastMenstruationDate) return null;
+
+    const today = new Date();
+    const last = new Date(lastMenstruationDate);
+
+    return Math.floor((today - last) / (1000 * 60 * 60 * 24));
+  };
+
+  const getPhase = (day) => {
+    if (!day) return "unknown";
+    if (day > 60) return "no_cycle"; // 🔥 AMENORRHEA HARD RULE
+
+    if (day <= 5) return "menstrual";
+    if (day <= 13) return "follicular";
+    if (day <= 16) return "ovulation";
+    return "luteal";
+  };
+
+  const getLatestLog = (logs = []) => {
+    if (!logs.length) return null;
+    return logs[logs.length - 1];
+  };
+
+  const detectEnergyAvailability = (log) => {
+    if (!log) return 3;
+
+    const score = (log.energy + log.sleep + log.performance) / 3 - log.fatigue;
+
+    return Math.max(1, Math.min(5, Math.round(score)));
+  };
+
+  const detectFlags = ({ day, cycleLength, log }) => {
+    const flags = [];
+
+    if (!cycleLength || cycleLength > 35) {
+      flags.push("Irregular cycle");
+    }
+
+    if (day && day > 60) {
+      flags.push("Amenorrhea risk");
+    }
+
+    if (log) {
+      if (log.energy <= 2 && log.performance <= 2) {
+        flags.push("Low energy availability");
+      }
+
+      if (log.fatigue >= 4 && log.sleep <= 2) {
+        flags.push("Poor recovery state");
+      }
+    }
+
+    return flags;
+  };
+
+  const getRecommendations = (phase, flags) => {
+    const training = [];
+    const nutrition = [];
+
+    switch (phase) {
+      case "menstrual":
+        training.push("Low intensity training or rest");
+        nutrition.push("Increase iron intake and hydration");
+        break;
+
+      case "follicular":
+        training.push("Focus on strength and progressive overload");
+        nutrition.push("Higher carbs to support performance");
+        break;
+
+      case "ovulation":
+        training.push("High intensity sessions");
+        nutrition.push("Optimize performance fueling");
+        break;
+
+      case "luteal":
+        training.push("Moderate intensity training");
+        nutrition.push("Stabilize blood sugar");
+        break;
+
+      case "no_cycle":
+        training.push("Avoid high intensity training");
+        nutrition.push("Increase caloric intake");
+        break;
+    }
+
+    if (flags.includes("Low energy availability")) {
+      training.unshift("Reduce training load immediately");
+      nutrition.unshift("Increase caloric intake");
+    }
+
+    if (flags.includes("Amenorrhea risk")) {
+      training.unshift("Avoid high intensity training");
+      nutrition.unshift("Ensure sufficient energy intake");
+    }
+
+    return { training, nutrition };
+  };
+
+  const day = getCycleDay(cycle.lastMenstruationDate);
+  const phase = getPhase(day);
+
+  const latestLog = getLatestLog(cycle.dailyLogs || []);
+  const energyScore = detectEnergyAvailability(latestLog);
+
+  const flags = detectFlags({
+    day,
+    cycleLength: cycle.cycleLength,
+    log: latestLog,
+  });
+
+  return {
+    currentPhase: phase,
+    dayOfCycle: day,
+    energyAvailabilityScore: energyScore,
+    riskFlags: flags,
+    recommendations: getRecommendations(phase, flags),
+  };
+};
+
+// -----------------------------
+// UPDATE MY CYCLE
+// -----------------------------
+exports.updateMyCycle = async (req, res) => {
+  try {
+    const userId = req.user?._id?.toString();
+
+    console.log("AUTH USER:", userId);
+    console.log("BODY RECEIVED:", req.body);
+
+    const { lastMenstruationDate, cycleLength } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!lastMenstruationDate) {
+      return res.status(400).json({
+        message: "lastMenstruationDate is required",
+      });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const prevCycle = user?.femaleProfile?.cycleData || {};
+
+    const cycle = {
+      lastMenstruationDate,
+      cycleLength,
+      dailyLogs: prevCycle.dailyLogs || [],
+    };
+
+    const insights = buildCycleInsights(cycle);
+
+    const cleanCycle = {
+      lastMenstruationDate,
+      cycleLength,
+      dailyLogs: cycle.dailyLogs,
+      insights,
+    };
+
+    user.femaleProfile = user.femaleProfile || {};
+    user.femaleProfile.cycleData = cleanCycle;
+
+    await user.save();
+
+    return res.status(200).json(cleanCycle);
+  } catch (error) {
+    console.error("updateMyCycle error:", error);
+    return res.status(500).json({
+      message: "Error updating cycle",
+      error: error.message,
+    });
+  }
+};
+
+// -----------------------------
+// ADD DAILY LOG
+// -----------------------------
+exports.addMyCycleLog = async (req, res) => {
+  try {
+    const userId = req.user?._id?.toString();
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { energy, fatigue, sleep, performance, mood } = req.body;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const prevCycle = user?.femaleProfile?.cycleData || {};
+
+    const updatedLogs = [
+      ...(prevCycle?.dailyLogs || []),
+      { energy, fatigue, sleep, performance, mood },
+    ];
+
+    const cycle = {
+      lastMenstruationDate: prevCycle?.lastMenstruationDate,
+      cycleLength: prevCycle?.cycleLength,
+      dailyLogs: updatedLogs,
+    };
+
+    const insights = buildCycleInsights(cycle);
+
+    const cleanCycle = {
+      ...cycle,
+      insights,
+    };
+
+    user.femaleProfile = user.femaleProfile || {};
+    user.femaleProfile.cycleData = cleanCycle;
+
+    await user.save();
+
+    return res.status(200).json(cleanCycle);
+  } catch (error) {
+    console.error("addMyCycleLog error:", error);
+    return res.status(500).json({
+      message: "Error saving log",
+      error: error.message,
+    });
+  }
+};
+
+// -----------------------------
+// GET MY CYCLE
+// -----------------------------
+exports.getMyCycle = async (req, res) => {
+  try {
+    const userId = req.user?._id?.toString();
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const cycle = JSON.parse(
+      JSON.stringify(user?.femaleProfile?.cycleData || {}),
+    );
+
+    return res.status(200).json(cycle);
+  } catch (error) {
+    console.error("getMyCycle error:", error);
+    return res.status(500).json({
+      message: "Error retrieving cycle",
+      error: error.message,
+    });
+  }
+};
+
+// -----------------------------
+// GET USER CYCLE (TRAINER / ADMIN)
+// -----------------------------
+exports.getUserCycle = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: "User ID required" });
+    }
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const cycle = JSON.parse(
+      JSON.stringify(user?.femaleProfile?.cycleData || {}),
+    );
+
+    return res.status(200).json(cycle);
+  } catch (error) {
+    console.error("getUserCycle error:", error);
+    return res.status(500).json({
+      message: "Error retrieving user cycle",
+      error: error.message,
+    });
   }
 };

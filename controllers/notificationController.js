@@ -1,5 +1,8 @@
 const Notification = require("../models/notificationModel");
 
+// -----------------------------
+// HELPERS
+// -----------------------------
 const toObjectIdString = (value) => {
   if (!value) return "";
   return String(value);
@@ -11,15 +14,12 @@ const buildVisibilityQuery = (user) => {
 
   const or = [];
 
-  // User-specific notifications
   or.push({ recipientType: "user", recipientUserId: userId });
 
-  // Role-based notifications
   if (role) {
     or.push({ recipientType: "role", recipientRole: role });
   }
 
-  // Multi-recipient notifications
   or.push({ recipientType: "many", recipientUserIds: userId });
 
   return { $or: or };
@@ -32,107 +32,140 @@ const isUnreadForUser = (notification, userId) => {
   return !readByStrs.includes(idStr);
 };
 
+// -----------------------------
+// GET NOTIFICATIONS
+// -----------------------------
 exports.getNotifications = async (req, res) => {
   try {
     const user = req.user;
-    const { limit = 10, page = 1, archived = "false" } = req.query;
 
-    const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 50);
-    const safePage = Math.max(parseInt(page, 10) || 1, 1);
-    const skip = (safePage - 1) * safeLimit;
-
-    const baseQuery = buildVisibilityQuery(user);
-    const archiveFilter =
-      String(archived) === "true" ? {} : { isArchived: { $ne: true } };
-
-    const query = { ...baseQuery, ...archiveFilter };
-
-    const notifications = await Notification.find(query)
+    const notifications = await Notification.find(buildVisibilityQuery(user))
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(safeLimit)
+      .limit(20)
       .lean();
-
-    const userId = user?._id;
 
     const normalized = notifications.map((n) => ({
       ...n,
-      isRead: !isUnreadForUser(n, userId),
+      isRead: !isUnreadForUser(n, user._id),
     }));
 
-    res.json({ results: normalized, page: safePage, limit: safeLimit });
+    res.json(normalized);
   } catch (err) {
-    console.error("getNotifications error:", err);
+    console.error(err);
     res.status(500).json({ message: "Error fetching notifications" });
   }
 };
 
+// -----------------------------
+// UNREAD COUNT
+// -----------------------------
 exports.getUnreadCount = async (req, res) => {
   try {
     const user = req.user;
-    const userId = user?._id;
 
-    const baseQuery = buildVisibilityQuery(user);
-    const query = { ...baseQuery, isArchived: { $ne: true } };
+    const notifications = await Notification.find(
+      buildVisibilityQuery(user),
+    ).lean();
 
-    const notifications = await Notification.find(query)
-      .select("readBy")
-      .lean();
-
-    const unread = notifications.reduce((acc, n) => {
-      return acc + (isUnreadForUser(n, userId) ? 1 : 0);
-    }, 0);
+    const unread = notifications.filter((n) =>
+      isUnreadForUser(n, user._id),
+    ).length;
 
     res.json({ unread });
   } catch (err) {
-    console.error("getUnreadCount error:", err);
     res.status(500).json({ message: "Error fetching unread count" });
   }
 };
 
+// -----------------------------
+// MARK AS READ
+// -----------------------------
 exports.markAsRead = async (req, res) => {
   try {
-    const user = req.user;
-    const userId = user?._id;
-    const { id } = req.params;
+    const userId = req.user._id;
 
-    const baseQuery = buildVisibilityQuery(user);
-    const query = { _id: id, ...baseQuery };
-
-    const updated = await Notification.findOneAndUpdate(
-      query,
+    const updated = await Notification.findByIdAndUpdate(
+      req.params.id,
       { $addToSet: { readBy: userId } },
       { new: true },
-    ).lean();
+    );
 
-    if (!updated) {
-      return res.status(404).json({ message: "Notification not found" });
-    }
-
-    res.json({ ...updated, isRead: true });
+    res.json(updated);
   } catch (err) {
-    console.error("markAsRead error:", err);
-    res.status(500).json({ message: "Error marking notification as read" });
+    res.status(500).json({ message: "Error marking as read" });
   }
 };
 
+// -----------------------------
+// READ ALL
+// -----------------------------
 exports.readAll = async (req, res) => {
   try {
-    const user = req.user;
-    const userId = user?._id;
+    const userId = req.user._id;
 
-    const baseQuery = buildVisibilityQuery(user);
-    const query = { ...baseQuery, isArchived: { $ne: true } };
-
-    await Notification.updateMany(query, { $addToSet: { readBy: userId } });
+    await Notification.updateMany({}, { $addToSet: { readBy: userId } });
 
     res.json({ ok: true });
   } catch (err) {
-    console.error("readAll error:", err);
     res.status(500).json({ message: "Error marking all as read" });
   }
 };
 
+// -----------------------------
+// CREATE (INTERNAL USE)
+// -----------------------------
 exports.createNotification = async (payload) => {
   return Notification.create(payload);
+};
+
+
+// -----------------------------
+// CREATE MOOD RISK ALERT
+// -----------------------------
+exports.createMoodRiskAlert = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+
+    const { moods } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!Array.isArray(moods) || moods.length < 3) {
+      return res.status(400).json({ message: "Invalid moods data" });
+    }
+
+    const lastAlert = await Notification.findOne({
+      userId,
+      type: "mood-risk",
+    }).sort({ createdAt: -1 });
+
+    // evitar duplicados en corto tiempo
+    if (lastAlert) {
+      const diff = Date.now() - new Date(lastAlert.createdAt).getTime();
+      const ONE_DAY = 24 * 60 * 60 * 1000;
+
+      if (diff < ONE_DAY) {
+        return res.status(200).json({ message: "Alert already exists" });
+      }
+    }
+
+    const notification = await Notification.create({
+      userId,
+      type: "mood-risk",
+      title: "Recovery risk detected",
+      message:
+        "Multiple negative mood logs detected. Recommend recovery and lower load.",
+      data: { moods },
+    });
+
+    return res.status(201).json(notification);
+  } catch (error) {
+    console.error("createMoodRiskAlert error:", error);
+    return res.status(500).json({
+      message: "Error creating alert",
+      error: error.message,
+    });
+  }
 };

@@ -9,12 +9,11 @@ const progressController = require("../controllers/progressController");
 const designedByPtController = require("../controllers/designedByPtController");
 const eventController = require("../controllers/eventController");
 const preWorkoutController = require("../controllers/preWorkoutController");
-const mealPlanController = require("../controllers/mealPlantController");
 const moodTracker = require("../controllers/moodTrackerController");
 const verifyEmailController = require("../controllers/verifyEmailController");
 const menstrualCycleController = require("../controllers/menstrualCycleController");
 const passwordController = require("../controllers/passwordController");
-const nutritionController = require("../controllers/nutritionController");
+const nutritionPlanController = require("../controllers/nutritionPlanController");
 const searchController = require("../controllers/searchController");
 const notificationController = require("../controllers/notificationController");
 
@@ -30,12 +29,11 @@ module.exports = {
   designedByPtController,
   eventController,
   preWorkoutController,
-  mealPlanController,
   moodTracker,
   verifyEmailController,
   menstrualCycleController,
   passwordController,
-  nutritionController,
+  nutritionPlanController,
   searchController,
   notificationController,
 };

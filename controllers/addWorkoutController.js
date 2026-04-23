@@ -1,38 +1,65 @@
-// controllers/addWorkoutController.js
-
 const AddWork = require("../models/addWorkoutModel");
 const mongoose = require("mongoose");
 
-// GET all workouts
+// ==============================
+// GET ALL (CORE FIX)
+// ==============================
 exports.findAll = async (req, res) => {
   try {
-    const workouts = await AddWork.find();
+    const userId = req.user._id;
+
+    const workouts = await AddWork.find({
+      $or: [
+        { isGeneral: true }, // biblioteca global
+        { trainerId: userId }, // propios
+      ],
+    }).sort({ createdAt: -1 });
+
     res.status(200).json(workouts);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch workouts", error });
   }
 };
 
-// GET one workout by ID
+// ==============================
+// GET ONE
+// ==============================
 exports.findOne = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user._id;
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid workout ID" });
     }
+
     const workout = await AddWork.findById(id);
+
     if (!workout) {
       return res.status(404).json({ message: "Workout not found" });
     }
+
+    // 🔒 seguridad
+    if (
+      !workout.isGeneral &&
+      workout.trainerId?.toString() !== userId.toString()
+    ) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
     res.status(200).json(workout);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch workout", error });
   }
 };
 
-// CREATE workout
+// ==============================
+// CREATE (FIX IMPORTANTE)
+// ==============================
 exports.create = async (req, res) => {
   try {
+    const userId = req.user._id;
+
     const {
       type,
       subType,
@@ -43,11 +70,9 @@ exports.create = async (req, res) => {
       picture,
       video,
       workoutLevel,
-      trainerId,
       isGeneral,
     } = req.body;
 
-    // al crear:
     const newWorkout = new AddWork({
       type,
       subType,
@@ -58,7 +83,7 @@ exports.create = async (req, res) => {
       picture,
       video,
       workoutLevel,
-      trainerId,
+      trainerId: userId, // 🔥 SIEMPRE backend
       isGeneral,
     });
 
@@ -69,15 +94,18 @@ exports.create = async (req, res) => {
   }
 };
 
-// UPDATE workout (only creator or admin can update)
+// ==============================
+// UPDATE
+// ==============================
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    const userId = req.user?._id;
-    const userRole = req.user?.role;
+    const userId = req.user._id;
+    const userRole = req.user.role;
 
     const workout = await AddWork.findById(id);
+
     if (!workout) {
       return res.status(404).json({ message: "Workout not found" });
     }
@@ -101,33 +129,27 @@ exports.update = async (req, res) => {
   }
 };
 
-// DELETE workout (only creator or admin can delete)
+// ==============================
+// DELETE
+// ==============================
 exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user._id;
+    const userRole = req.user.role;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid workout ID" });
     }
 
     const workout = await AddWork.findById(id);
+
     if (!workout) {
       return res.status(404).json({ message: "Workout not found" });
     }
 
-    // Verifica si hay usuario autenticado
-    const userId = req.user?._id;
-    const userRole = req.user?.role;
-
-    if (!userId && !userRole) {
-      return res
-        .status(401)
-        .json({ message: "Unauthorized: user not authenticated" });
-    }
-
-    // Solo el creador o un admin puede eliminar
     if (
-      workout.trainerId?.toString() !== userId?.toString() &&
+      workout.trainerId?.toString() !== userId.toString() &&
       userRole !== "admin"
     ) {
       return res
@@ -136,9 +158,10 @@ exports.delete = async (req, res) => {
     }
 
     await workout.deleteOne();
+
     return res.status(200).json({ message: "Workout deleted successfully" });
   } catch (error) {
-    console.error(" Error deleting workout:", error);
+    console.error("Error deleting workout:", error);
     return res
       .status(500)
       .json({ message: "Failed to delete workout", error: error.message });

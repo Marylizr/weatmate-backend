@@ -7,7 +7,12 @@ const getCycleDay = (lastMenstruationDate) => {
   return Math.floor((today - last) / (1000 * 60 * 60 * 24));
 };
 
-const getPhase = (day) => {
+const getPhase = (day, flags = []) => {
+  // 🔥 PRIORIDAD ABSOLUTA → Amenorrhea
+  if (flags.includes("Amenorrhea risk")) {
+    return "no_cycle";
+  }
+
   if (!day) return "unknown";
 
   if (day <= 5) return "menstrual";
@@ -17,7 +22,7 @@ const getPhase = (day) => {
 };
 
 const getLatestLog = (logs = []) => {
-  if (!logs.length) return null;
+  if (!logs?.length) return null;
   return logs[logs.length - 1];
 };
 
@@ -32,11 +37,13 @@ const detectEnergyAvailability = (log) => {
 const detectFlags = ({ day, cycleLength, log }) => {
   const flags = [];
 
+  // 🔴 Irregular cycle
   if (!cycleLength || cycleLength > 35) {
     flags.push("Irregular cycle");
   }
 
-  if (day && day > 60) {
+  // 🔴 Amenorrhea REAL (NO 60 días → mínimo 90 días clínico)
+  if (day && day >= 90) {
     flags.push("Amenorrhea risk");
   }
 
@@ -56,6 +63,15 @@ const detectFlags = ({ day, cycleLength, log }) => {
 const getRecommendations = (phase, flags) => {
   const training = [];
   const nutrition = [];
+
+  // 🔥 PRIORIDAD ABSOLUTA → Amenorrhea
+  if (flags.includes("Amenorrhea risk")) {
+    training.push("Avoid high intensity training");
+    nutrition.push("Ensure sufficient energy intake");
+    nutrition.push("Increase total calories and reduce deficits");
+
+    return { training, nutrition };
+  }
 
   switch (phase) {
     case "menstrual":
@@ -77,35 +93,37 @@ const getRecommendations = (phase, flags) => {
       training.push("Moderate volume and controlled intensity");
       nutrition.push("Stabilize blood sugar and reduce cravings");
       break;
+
+    default:
+      training.push("Maintain light to moderate activity");
+      nutrition.push("Focus on balanced nutrition");
+      break;
   }
 
-  // override si hay flags
+  // 🔴 Overrides secundarios
   if (flags.includes("Low energy availability")) {
     training.unshift("Reduce training load immediately");
     nutrition.unshift("Increase caloric intake");
-  }
-
-  if (flags.includes("Amenorrhea risk")) {
-    training.unshift("Avoid high intensity training");
-    nutrition.unshift("Ensure sufficient energy intake");
   }
 
   return { training, nutrition };
 };
 
 exports.buildInsights = (cycle) => {
-  const day = getCycleDay(cycle.lastMenstruationDate);
-  const phase = getPhase(day);
+  const day = getCycleDay(cycle?.lastMenstruationDate);
 
-  const latestLog = getLatestLog(cycle.dailyLogs);
+  const latestLog = getLatestLog(cycle?.dailyLogs);
 
   const energyScore = detectEnergyAvailability(latestLog);
 
   const flags = detectFlags({
     day,
-    cycleLength: cycle.cycleLength,
+    cycleLength: cycle?.cycleLength,
     log: latestLog,
   });
+
+  // 🔥 IMPORTANTE → phase después de flags
+  const phase = getPhase(day, flags);
 
   const recommendations = getRecommendations(phase, flags);
 
@@ -113,7 +131,7 @@ exports.buildInsights = (cycle) => {
     currentPhase: phase,
     dayOfCycle: day,
     cycleHealthScore:
-      cycle.cycleLength >= 24 && cycle.cycleLength <= 35 ? 4 : 2,
+      cycle?.cycleLength >= 24 && cycle?.cycleLength <= 35 ? 4 : 2,
     energyAvailabilityScore: energyScore,
     riskFlags: flags,
     recommendations,

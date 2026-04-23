@@ -129,14 +129,21 @@ const FemaleProfileSchema = new Schema(
         rationale: { type: String, default: "" },
       },
     },
-
+    cycleData: {
+      type: Object,
+      default: {},
+    },
+    lastMoodEntry: {
+      type: Date,
+      default: null,
+    },
     // Trainer-only notes (if you want this hidden from client UI)
     trainerOnlyNotes: { type: String, default: "" },
 
     // Metadata
     lastUpdatedAt: { type: Date, default: null },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const UserSchema = new Schema(
@@ -268,7 +275,7 @@ const UserSchema = new Schema(
       default: () => ({}),
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("User", UserSchema);

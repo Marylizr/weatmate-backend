@@ -1,43 +1,61 @@
 const express = require("express");
-const router = express.Router();
+const notificationRouter = express.Router();
 
 const {
   getNotifications,
   getUnreadCount,
   markAsRead,
   readAll,
+  createMoodRiskAlert,
 } = require("../controllers/notificationController");
 
-// Adjust these imports to match your project structure
 const { authMiddleware } = require("../auth/authMiddleware");
 const allowRoles = require("../auth/allowRoles");
 
-router.get(
+// ==============================
+// GET ALL NOTIFICATIONS (paginated)
+// ==============================
+notificationRouter.get(
   "/",
   authMiddleware,
   allowRoles("admin", "personal-trainer", "basic"),
   getNotifications,
 );
 
-router.get(
+// ==============================
+// GET UNREAD COUNT
+// ==============================
+notificationRouter.get(
   "/unread-count",
   authMiddleware,
   allowRoles("admin", "personal-trainer", "basic"),
   getUnreadCount,
 );
 
-router.patch(
+// ==============================
+// MARK ONE AS READ
+// ==============================
+notificationRouter.patch(
   "/:id/read",
   authMiddleware,
   allowRoles("admin", "personal-trainer", "basic"),
   markAsRead,
 );
 
-router.post(
+// ==============================
+// MARK ALL AS READ
+// ==============================
+notificationRouter.post(
   "/read-all",
   authMiddleware,
   allowRoles("admin", "personal-trainer", "basic"),
   readAll,
 );
 
-module.exports = router;
+notificationRouter.post(
+  "/notifications/mood-risk",
+  authMiddleware,
+  createMoodRiskAlert,
+);
+
+module.exports = notificationRouter;
