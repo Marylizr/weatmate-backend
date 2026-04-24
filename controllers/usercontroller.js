@@ -764,14 +764,19 @@ exports.update = async (req, res) => {
 
     let targetUserId = null;
 
+    // =============================
+    // RESOLVE TARGET USER
+    // =============================
     if (paramId && paramId !== "me") {
       targetUserId = String(paramId);
-      if (!isAdmin && authUserId && String(authUserId) !== targetUserId) {
+
+      if (!isAdmin && String(authUserId) !== targetUserId) {
         return res.status(403).json({ message: "Access denied." });
       }
     } else {
-      if (!authUserId)
+      if (!authUserId) {
         return res.status(401).json({ message: "Unauthorized." });
+      }
       targetUserId = String(authUserId);
     }
 
@@ -779,25 +784,22 @@ exports.update = async (req, res) => {
       return res.status(400).json({ message: "Invalid user ID." });
     }
 
-    const updateData = { ...req.body };
+    let updateData = { ...req.body };
 
+    // =============================
+    // ROLE PROTECTION
+    // =============================
     if (!isAdmin) {
-      if (typeof updateData.trainerId !== "undefined") {
-        return res.status(403).json({ message: "Access denied. Admins only." });
-      }
-      if (typeof updateData.role !== "undefined") {
-        return res.status(403).json({ message: "Access denied. Admins only." });
-      }
-      if (typeof updateData.isVerified !== "undefined") {
-        return res.status(403).json({ message: "Access denied. Admins only." });
-      }
+      delete updateData.trainerId;
+      delete updateData.role;
+      delete updateData.isVerified;
     }
 
-    if (Object.prototype.hasOwnProperty.call(updateData, "password")) {
-      const raw =
-        typeof updateData.password === "string"
-          ? updateData.password.trim()
-          : "";
+    // =============================
+    // PASSWORD HANDLING
+    // =============================
+    if (updateData.password !== undefined) {
+      const raw = updateData.password?.trim();
 
       if (!raw) {
         delete updateData.password;
@@ -811,30 +813,81 @@ exports.update = async (req, res) => {
       }
     }
 
-    if (typeof updateData.email === "string") {
+    // =============================
+    // SANITIZE
+    // =============================
+    if (updateData.email) {
       updateData.email = updateData.email.trim().toLowerCase();
     }
-    if (typeof updateData.name === "string") {
+
+    if (updateData.name) {
       updateData.name = updateData.name.trim();
     }
 
-    Object.keys(updateData).forEach((k) => {
-      if (typeof updateData[k] === "undefined") delete updateData[k];
+    // =============================
+    // FIX NUTRITION PROFILE
+    // =============================
+    if (updateData.nutritionProfile) {
+      const np = updateData.nutritionProfile;
+
+      updateData.nutritionProfile = {
+        dietType: np.dietType || "standard",
+        intolerances: Array.isArray(np.intolerances) ? np.intolerances : [],
+        allergies: Array.isArray(np.allergies) ? np.allergies : [],
+        dislikes: Array.isArray(np.dislikes) ? np.dislikes : [],
+      };
+    }
+
+    // =============================
+    // FIX MEDICAL FLAGS
+    // =============================
+    if (updateData.medicalFlags) {
+      // 👇 viene como objeto (tu UI actual)
+      if (
+        typeof updateData.medicalFlags === "object" &&
+        !Array.isArray(updateData.medicalFlags)
+      ) {
+        const flagsArray = Object.keys(updateData.medicalFlags).filter(
+          (key) => updateData.medicalFlags[key] === true,
+        );
+
+        updateData.medicalFlags = flagsArray;
+      }
+
+      // 👇 si ya viene como array (future proof)
+      if (Array.isArray(updateData.medicalFlags)) {
+        updateData.medicalFlags = updateData.medicalFlags;
+      }
+    }
+
+    // =============================
+    // CLEAN UNDEFINED
+    // =============================
+    Object.keys(updateData).forEach((key) => {
+      if (updateData[key] === undefined) delete updateData[key];
     });
 
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ message: "No fields to update." });
     }
 
-    const updatedUser = await User.findByIdAndUpdate(targetUserId, updateData, {
-      new: true,
-      runValidators: true,
-      context: "query",
-      select: "-password",
-    });
+    // =============================
+    // UPDATE USER
+    // =============================
+    const updatedUser = await User.findByIdAndUpdate(
+      targetUserId,
+      { $set: updateData },
+      {
+        new: true,
+        runValidators: true,
+        context: "query",
+        select: "-password",
+      },
+    );
 
-    if (!updatedUser)
+    if (!updatedUser) {
       return res.status(404).json({ message: "User not found." });
+    }
 
     return res.status(200).json({
       message: "User updated successfully",
@@ -845,7 +898,8 @@ exports.update = async (req, res) => {
       return res.status(409).json({ message: "Email already in use." });
     }
 
-    console.error("Error updating user:", err);
+    console.error("Update user error:", err);
+
     return res.status(500).json({
       message: "Unable to update user",
       error: err.message,

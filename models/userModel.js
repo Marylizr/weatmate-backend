@@ -1,9 +1,11 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
+// ==============================
+// FEMALE PROFILE (NO TOCAR)
+// ==============================
 const FemaleProfileSchema = new Schema(
   {
-    // Stage / context (high value for trainer planning)
     lifeStage: {
       type: String,
       enum: [
@@ -18,7 +20,6 @@ const FemaleProfileSchema = new Schema(
       default: "unknown",
     },
 
-    // Contraception / hormonal context
     contraception: {
       usesContraception: { type: Boolean, default: false },
       type: {
@@ -40,7 +41,6 @@ const FemaleProfileSchema = new Schema(
       notes: { type: String, default: "" },
     },
 
-    // Cycle baseline (stable-ish, optional)
     cycleBaseline: {
       regularity: {
         type: String,
@@ -49,7 +49,7 @@ const FemaleProfileSchema = new Schema(
       },
       typicalCycleLengthDays: { type: Number, default: null },
       typicalBleedDays: { type: Number, default: null },
-      lastKnownLMP: { type: Date, default: null }, // optional
+      lastKnownLMP: { type: Date, default: null },
       trackingMethod: {
         type: String,
         enum: ["none", "calendar", "btt", "app", "ovulation_tests", "other"],
@@ -57,7 +57,6 @@ const FemaleProfileSchema = new Schema(
       },
     },
 
-    // Symptoms that affect training readiness/recovery
     symptoms: {
       dysmenorrhea: {
         has: { type: Boolean, default: false },
@@ -80,7 +79,6 @@ const FemaleProfileSchema = new Schema(
       moodIssues: { type: Boolean, default: false },
     },
 
-    // Menopause/perimenopause specifics
     menopause: {
       hotFlashes: { type: Boolean, default: false },
       nightSweats: { type: Boolean, default: false },
@@ -90,7 +88,6 @@ const FemaleProfileSchema = new Schema(
       notes: { type: String, default: "" },
     },
 
-    // Pregnancy/postpartum specifics
     pregnancyPostpartum: {
       isPregnant: { type: Boolean, default: false },
       dueDate: { type: Date, default: null },
@@ -100,9 +97,7 @@ const FemaleProfileSchema = new Schema(
       notes: { type: String, default: "" },
     },
 
-    // RED-S / LEA / Amenorrhea questionnaire + derived flags
     energyAvailability: {
-      // Inputs
       recentWeightLoss: { type: Boolean, default: false },
       restrictiveDieting: { type: Boolean, default: false },
       fearOfWeightGain: { type: Boolean, default: false },
@@ -114,13 +109,11 @@ const FemaleProfileSchema = new Schema(
       stressFractureHistory: { type: Boolean, default: false },
       injuryFrequencyHigh: { type: Boolean, default: false },
 
-      // Cycle disturbance indicators
       missedPeriods3PlusMonths: { type: Boolean, default: false },
       cyclesPerYear: { type: Number, default: null },
 
       notes: { type: String, default: "" },
 
-      // Derived flags (calculated in controller)
       flags: {
         redS_risk: { type: Boolean, default: false },
         lea_risk: { type: Boolean, default: false },
@@ -129,160 +122,120 @@ const FemaleProfileSchema = new Schema(
         rationale: { type: String, default: "" },
       },
     },
-    cycleData: {
-      type: Object,
-      default: {},
-    },
-    lastMoodEntry: {
-      type: Date,
-      default: null,
-    },
-    // Trainer-only notes (if you want this hidden from client UI)
-    trainerOnlyNotes: { type: String, default: "" },
 
-    // Metadata
+    cycleData: { type: Object, default: {} },
+    lastMoodEntry: { type: Date, default: null },
+    trainerOnlyNotes: { type: String, default: "" },
     lastUpdatedAt: { type: Date, default: null },
   },
   { _id: false },
 );
 
+// ==============================
+// USER MODEL
+// ==============================
 const UserSchema = new Schema(
   {
-    name: {
-      type: String,
-      required: [true, "Name is required"],
-    },
-    image: {
-      type: String,
-    },
+    name: { type: String, required: true },
+    image: String,
+
     email: {
       type: String,
-      required: [true, "Email is required"],
+      required: true,
       unique: true,
       match: [/^\S+@\S+\.\S+$/, "Invalid email format"],
     },
-    isVerified: {
-      type: Boolean,
-      default: false,
-    }, // Email verification status
 
-    emailToken: {
-      type: String,
-    }, // Token for email confirmation
+    isVerified: { type: Boolean, default: false },
+    emailToken: String,
 
-    password: {
-      type: String,
-      required: [true, "Password is required"],
-    },
-    resetPasswordToken: {
-      type: String,
-    },
-    resetPasswordExpire: {
-      type: Date,
-    },
-    age: {
-      type: Number,
-      min: [15, "You must be at least 15 years old"],
-    },
-    height: {
-      type: Number,
-      min: [0, "Height must be a positive number"],
-    },
-    weight: {
-      type: Number,
-      min: [0, "Weight must be a positive number"],
-    },
-    goal: {
-      type: String,
-    },
+    password: { type: String, required: true },
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
+
+    age: Number,
+    height: Number,
+    weight: Number,
+    goal: String,
+
     role: {
       type: String,
       default: "basic",
       enum: ["basic", "admin", "personal-trainer"],
     },
+
     token: String,
+
     gender: {
       type: String,
       enum: ["female", "male"],
-      required: [true, "Gender is required"],
+      required: true,
     },
+
     fitness_level: {
       type: String,
       enum: ["beginner", "intermediate", "advanced"],
     },
 
-    medicalHistory: [
-      {
-        history: { type: String, required: true },
-        date: { type: Date, default: Date.now },
-      },
-    ],
-
-    preferences: [
-      {
-        preference: { type: String, required: true },
-        date: { type: Date, default: Date.now },
-      },
-    ],
-
-    sessionNotes: [
-      {
-        note: { type: String, required: true },
-        date: { type: Date, default: Date.now },
-      },
-    ],
+    // ==============================
+    // NUTRITION (FIXED)
+    // ==============================
     nutritionProfile: {
       dietType: {
         type: String,
         enum: ["standard", "vegetarian", "vegan", "keto"],
         default: "standard",
       },
-      intolerances: [
-        {
-          type: String,
-          enum: ["lactose", "gluten"],
-        },
-      ],
-      allergies: [
-        {
-          type: String,
-          enum: ["nuts", "shellfish", "eggs"],
-        },
-      ],
+
+      // 👇 ahora dinámico
+      intolerances: [{ type: String }],
+
+      allergies: [{ type: String }],
+
       dislikes: [String],
     },
 
-    medicalFlags: {
-      cardiovascular: { type: Boolean, default: false },
-      metabolic: { type: Boolean, default: false },
-      injuries: { type: Boolean, default: false },
-      medications: { type: Boolean, default: false },
-    },
+    // ==============================
+    //  HEALTH FLAGS (FIXED)
+    // ==============================
+    medicalFlags: [
+      {
+        type: String,
+      },
+    ],
 
-    // Reference to the personal trainer
+    medicalHistory: [
+      {
+        history: String,
+        date: { type: Date, default: Date.now },
+      },
+    ],
+
+    preferences: [
+      {
+        preference: String,
+        date: { type: Date, default: Date.now },
+      },
+    ],
+
+    sessionNotes: [
+      {
+        note: String,
+        date: { type: Date, default: Date.now },
+      },
+    ],
+
     trainerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
 
-    // Admin / personal trainer -specific fields
-    degree: {
-      type: String,
-    },
-    experience: {
-      type: Number,
-    },
-    specializations: {
-      type: String,
-    },
-    bio: {
-      type: String,
-    },
-    location: {
-      type: String,
-    },
+    degree: String,
+    experience: Number,
+    specializations: String,
+    bio: String,
+    location: String,
 
-    // NEW: femaleProfile embedded in user (no new collections)
     femaleProfile: {
       type: FemaleProfileSchema,
       default: () => ({}),
