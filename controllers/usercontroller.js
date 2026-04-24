@@ -836,7 +836,10 @@ exports.update = async (req, res) => {
     if (!updatedUser)
       return res.status(404).json({ message: "User not found." });
 
-    return res.status(200).json(updatedUser);
+    return res.status(200).json({
+      message: "User updated successfully",
+      user: updatedUser,
+    });
   } catch (err) {
     if (err?.code === 11000 && err?.keyPattern?.email) {
       return res.status(409).json({ message: "Email already in use." });

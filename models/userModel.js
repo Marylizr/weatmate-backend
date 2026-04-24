@@ -231,20 +231,33 @@ const UserSchema = new Schema(
         date: { type: Date, default: Date.now },
       },
     ],
-    nutritionHistory: [
-      {
-        date: { type: Date, default: Date.now },
-        calories: { type: Number, required: true },
-        protein: { type: Number, required: true },
-        carbs: { type: Number, required: true },
-        fats: { type: Number, required: true },
-        goal: {
-          type: String,
-          enum: ["maintenance", "fat-loss", "muscle-gain"],
-          required: true,
-        },
+    nutritionProfile: {
+      dietType: {
+        type: String,
+        enum: ["standard", "vegetarian", "vegan", "keto"],
+        default: "standard",
       },
-    ],
+      intolerances: [
+        {
+          type: String,
+          enum: ["lactose", "gluten"],
+        },
+      ],
+      allergies: [
+        {
+          type: String,
+          enum: ["nuts", "shellfish", "eggs"],
+        },
+      ],
+      dislikes: [String],
+    },
+
+    medicalFlags: {
+      cardiovascular: { type: Boolean, default: false },
+      metabolic: { type: Boolean, default: false },
+      injuries: { type: Boolean, default: false },
+      medications: { type: Boolean, default: false },
+    },
 
     // Reference to the personal trainer
     trainerId: {
