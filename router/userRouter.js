@@ -50,7 +50,7 @@ userRouter.get(
 
 userRouter.put("/", authMiddleware, requireVerified, userController.update); // update self (legacy)
 userRouter.put("/me", authMiddleware, requireVerified, userController.update); // update self (nice)
-userRouter.put("/user/:id", authMiddleware, userController.update);
+userRouter.put("/:id", authMiddleware, userController.update); // update self (nice) - alternative route if frontend prefers this format
 
 // ==============================
 // FEMALE PROFILE ROUTES (IMPORTANT: before /:id)
