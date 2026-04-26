@@ -119,7 +119,7 @@ exports.create = async (req, res) => {
       }));
     } else if (totalWeeks > 0) {
       weeks = Array.from({ length: totalWeeks }).map((_, i) =>
-        buildDefaultWeek(i + 1)
+        buildDefaultWeek(i + 1),
       );
     }
 
@@ -168,9 +168,11 @@ exports.list = async (req, res) => {
     const trainerId = req.query?.trainerId;
     const status = req.query?.status;
     const isActive = req.query?.isActive;
+    const weekStart = req.query?.weekStart;
 
     const query = {};
 
+    // ---------- ROLE FILTER ----------
     if (isAdmin) {
       if (clientId && isObjectId(clientId)) query.clientId = clientId;
       if (trainerId && isObjectId(trainerId)) query.trainerId = trainerId;
@@ -185,21 +187,30 @@ exports.list = async (req, res) => {
       return res.status(403).json({ message: "Access denied." });
     }
 
-    if (status && ["draft", "published", "archived"].includes(status))
-      query.status = status;
-    if (typeof isActive !== "undefined")
-      query.isActive = String(isActive) === "true";
+    // ---------- WEEK FILTER (CLAVE) ----------
+    if (weekStart) {
+      query.weekStart = weekStart;
+    }
 
-    const plans = await TrainingPlan.find(query)
-      .select("-weeks.days.exercises.substitutions") // lightweight list
-      .sort({ updatedAt: -1 });
+    // ---------- OPTIONAL FILTERS ----------
+    if (status && ["draft", "published", "archived"].includes(status)) {
+      query.status = status;
+    }
+
+    if (typeof isActive !== "undefined") {
+      query.isActive = String(isActive) === "true";
+    }
+
+    // ---------- QUERY ----------
+    const plans = await TrainingPlan.find(query).sort({ updatedAt: -1 });
 
     return res.status(200).json(plans);
   } catch (err) {
     console.error("Error listing training plans:", err);
-    return res
-      .status(500)
-      .json({ message: "Unable to list training plans", error: err.message });
+    return res.status(500).json({
+      message: "Unable to list training plans",
+      error: err.message,
+    });
   }
 };
 
@@ -227,12 +238,10 @@ exports.getById = async (req, res) => {
     return res.status(200).json(plan);
   } catch (err) {
     console.error("Error retrieving training plan:", err);
-    return res
-      .status(500)
-      .json({
-        message: "Unable to retrieve training plan",
-        error: err.message,
-      });
+    return res.status(500).json({
+      message: "Unable to retrieve training plan",
+      error: err.message,
+    });
   }
 };
 
@@ -347,7 +356,7 @@ exports.publish = async (req, res) => {
         isActive: true,
         _id: { $ne: plan._id },
       },
-      { $set: { isActive: false, updatedBy: req.user._id } }
+      { $set: { isActive: false, updatedBy: req.user._id } },
     );
 
     plan.status = "published";
@@ -489,7 +498,7 @@ exports.getActiveToday = async (req, res) => {
     if (targetDate) {
       for (const w of plan.weeks || []) {
         const d = (w.days || []).find(
-          (x) => String(x.date || "") === targetDate
+          (x) => String(x.date || "") === targetDate,
         );
         if (d) {
           foundDay = d;
@@ -503,7 +512,7 @@ exports.getActiveToday = async (req, res) => {
     if (!foundDay) {
       for (const w of plan.weeks || []) {
         const d = (w.days || []).find(
-          (x) => Array.isArray(x.exercises) && x.exercises.length > 0
+          (x) => Array.isArray(x.exercises) && x.exercises.length > 0,
         );
         if (d) {
           foundDay = d;
@@ -530,12 +539,10 @@ exports.getActiveToday = async (req, res) => {
     });
   } catch (err) {
     console.error("Error getting active plan today:", err);
-    return res
-      .status(500)
-      .json({
-        message: "Unable to retrieve today's session",
-        error: err.message,
-      });
+    return res.status(500).json({
+      message: "Unable to retrieve today's session",
+      error: err.message,
+    });
   }
 };
 
@@ -572,7 +579,7 @@ exports.getActiveWeek = async (req, res) => {
       return res.status(404).json({ message: "No active plan found." });
 
     const week = (plan.weeks || []).find(
-      (w) => toInt(w.weekIndex, 0) === weekIndex
+      (w) => toInt(w.weekIndex, 0) === weekIndex,
     );
     if (!week) return res.status(404).json({ message: "Week not found." });
 
@@ -589,8 +596,6 @@ exports.getActiveWeek = async (req, res) => {
       .json({ message: "Unable to retrieve week", error: err.message });
   }
 };
-
-
 
 // helper simple
 const startOfWeek = (date) => {
@@ -627,7 +632,9 @@ exports.getTrainerDashboard = async (req, res) => {
     // trainer can only access own clients
     if (!isAdmin) {
       if (!user.trainerId || user.trainerId.toString() !== req.user.id) {
-        return res.status(403).json({ message: "Access denied to this client." });
+        return res
+          .status(403)
+          .json({ message: "Access denied to this client." });
       }
     }
 
