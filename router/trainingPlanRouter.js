@@ -1,4 +1,4 @@
-// routes/trainingPlanRouter.js
+console.log("TRAINING PLAN ROUTER LOADED");
 const express = require("express");
 const trainingPlanRouter = express.Router();
 

@@ -69,6 +69,12 @@ const buildDefaultWeek = (weekIndex = 1, startDate = "", endDate = "") => ({
     exercises: [],
   })),
 });
+const addDays = (start, i) => {
+  if (!start) return "";
+  const d = new Date(start);
+  d.setDate(d.getDate() + i);
+  return d.toISOString().split("T")[0];
+};
 
 exports.create = async (req, res) => {
   try {
@@ -82,6 +88,7 @@ exports.create = async (req, res) => {
       return res.status(403).json({ message: "Access denied." });
     }
 
+    // ---------- IDS ----------
     const clientId = req.body?.clientId;
     const trainerId =
       isAdmin && req.body?.trainerId ? req.body.trainerId : req.user._id;
@@ -89,59 +96,106 @@ exports.create = async (req, res) => {
     if (!clientId || !isObjectId(clientId)) {
       return res.status(400).json({ message: "Valid clientId is required." });
     }
+
     if (!trainerId || !isObjectId(trainerId)) {
       return res.status(400).json({ message: "Valid trainerId is required." });
     }
 
+    // ---------- BASIC DATA ----------
     const title = safeStr(req.body?.title) || "Training Plan";
     const description = safeStr(req.body?.description) || "";
     const macroGoal = safeStr(req.body?.macroGoal) || "";
 
+    const weekStart = normalizeYYYYMMDD(req.body?.weekStart) || "";
     const startDate = normalizeYYYYMMDD(req.body?.startDate) || "";
     const endDate = normalizeYYYYMMDD(req.body?.endDate) || "";
 
-    const totalWeeks = toInt(req.body?.totalWeeks, 0);
+    const mesoFocus = safeStr(req.body?.mesoFocus) || "";
+    const microNotes = safeStr(req.body?.microNotes) || "";
 
-    // Optional: create with initial weeks skeleton
-    const initialWeeks = Array.isArray(req.body?.weeks) ? req.body.weeks : null;
-    let weeks = [];
+    // ---------- FRONTEND DATA ----------
+    const daysObj = req.body?.days || {};
+    const dayTypes = req.body?.dayTypes || {};
+    const macrosObj = req.body?.macros || {};
 
-    if (initialWeeks && initialWeeks.length > 0) {
-      // Trust but normalize minimally
-      weeks = initialWeeks.map((w, idx) => ({
-        weekIndex: toInt(w.weekIndex, idx + 1),
-        startDate: normalizeYYYYMMDD(w.startDate) || "",
-        endDate: normalizeYYYYMMDD(w.endDate) || "",
-        label: safeStr(w.label) || `Week ${toInt(w.weekIndex, idx + 1)}`,
-        focus: safeStr(w.focus) || "",
-        isDeload: Boolean(w.isDeload),
-        days: Array.isArray(w.days) ? w.days : buildDefaultWeek(idx + 1).days,
-      }));
-    } else if (totalWeeks > 0) {
-      weeks = Array.from({ length: totalWeeks }).map((_, i) =>
-        buildDefaultWeek(i + 1),
-      );
-    }
+    const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
-    const mesocycles = Array.isArray(req.body?.mesocycles)
-      ? req.body.mesocycles
-      : [];
+    // ---------- BUILD WEEK ----------
+    const week = {
+      weekIndex: 1,
+      startDate: weekStart,
+      endDate: "",
+      label: "Week 1",
+      focus: mesoFocus,
+      isDeload: false,
 
+      days: DAY_KEYS.map((key, index) => {
+        const exercises = Array.isArray(daysObj[key]) ? daysObj[key] : [];
+
+        return {
+          dayOfWeek: index,
+          date: weekStart ? addDays(weekStart, index) : "",
+
+          title: dayTypes[key] || "training",
+          focus: dayTypes[key] === "rest" ? "recovery" : "",
+          notes: microNotes || "",
+
+          exercises: (daysObj[key] || []).map((ex, i) => ({
+            workoutId: ex.workoutId || ex._id,
+            order: i,
+
+            sets: Number(ex.series || ex.sets || 0),
+            repsMin: Number(ex.reps || ex.repsMin || 0),
+            repsMax: Number(ex.reps || ex.repsMax || 0),
+
+            loadKg: Number(ex.loadKg || 0),
+            percent1RM: Number(ex.percent1RM || 0),
+            rpe: Number(ex.rpe || 0),
+            rir: Number(ex.rir || 0),
+
+            restSec: Number(ex.restSec || 0),
+            tempo: ex.tempo || "",
+
+            notes: ex.description || ex.notes || "",
+            substitutions: [],
+          })),
+
+          macros: {
+            calories: Number(macrosObj?.[key]?.calories || 0),
+            protein: Number(macrosObj?.[key]?.protein || 0),
+            carbs: Number(macrosObj?.[key]?.carbs || 0),
+            fats: Number(macrosObj?.[key]?.fats || 0),
+          },
+        };
+      }),
+    };
+
+    // ---------- CREATE ----------
     const plan = await TrainingPlan.create({
       trainerId,
       clientId,
+
+      weekStart,
+
       status: "draft",
+
       title,
       description,
       macroGoal,
+
       startDate,
       endDate,
-      totalWeeks: totalWeeks > 0 ? totalWeeks : weeks.length,
-      mesocycles,
-      weeks,
+
+      totalWeeks: 1,
+
+      mesocycles: [],
+
+      weeks: [week],
+
       version: 1,
       publishedAt: null,
       isActive: true,
+
       createdBy: req.user._id,
       updatedBy: req.user._id,
     });
@@ -149,9 +203,10 @@ exports.create = async (req, res) => {
     return res.status(201).json(plan);
   } catch (err) {
     console.error("Error creating training plan:", err);
-    return res
-      .status(500)
-      .json({ message: "Unable to create training plan", error: err.message });
+    return res.status(500).json({
+      message: "Unable to create training plan",
+      error: err.message,
+    });
   }
 };
 
@@ -285,8 +340,8 @@ exports.update = async (req, res) => {
     const updateData = {};
 
     for (const k of allowedTop) {
-      if (Object.prototype.hasOwnProperty.call(req.body || {}, k))
-        updateData[k] = req.body[k];
+         if (Object.prototype.hasOwnProperty.call(updateData, "weekStart"))
+           updateData.weekStart = normalizeYYYYMMDD(updateData.weekStart) || "";
     }
 
     if (Object.prototype.hasOwnProperty.call(updateData, "title"))

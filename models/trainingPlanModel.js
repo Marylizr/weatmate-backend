@@ -36,35 +36,34 @@ const ExerciseSchema = new Schema(
       },
     ],
   },
-  { _id: true }
+  { _id: true },
 );
 
-const DaySchema = new Schema(
-  {
-    // Either you can store a date (recommended) OR just a weekday index.
-    // We support both; UI can choose.
-    date: { type: String, default: "" }, // "YYYY-MM-DD" (local date)
-    dayOfWeek: { type: Number, min: 0, max: 6, default: 0 }, // 0=Mon ... 6=Sun (define in UI)
+const DaySchema = new Schema({
+  date: { type: String, default: "" },
+  dayOfWeek: { type: Number, min: 0, max: 6, default: 0 },
 
-    title: { type: String, default: "" }, // e.g. "Upper Body B"
-    focus: { type: String, default: "" }, // e.g. "Hypertrophy"
-    durationMin: { type: Number, default: 0 },
+  title: { type: String, default: "" },
+  focus: { type: String, default: "" },
 
-    // Session meta
-    warmup: { type: String, default: "" },
-    cooldown: { type: String, default: "" },
-    notes: { type: String, default: "" },
+  durationMin: { type: Number, default: 0 },
+  warmup: { type: String, default: "" },
+  cooldown: { type: String, default: "" },
+  notes: { type: String, default: "" },
 
-    // Optional constraints for the day
-    rpeCap: { type: Number, default: 0 },
-    volumeCap: { type: Number, default: 0 },
+  rpeCap: { type: Number, default: 0 },
+  volumeCap: { type: Number, default: 0 },
 
-    // Exercises
-    exercises: { type: [ExerciseSchema], default: [] },
+  // SOLO ESTRUCTURA
+  macros: {
+    calories: { type: Number, default: 0 },
+    protein: { type: Number, default: 0 },
+    carbs: { type: Number, default: 0 },
+    fats: { type: Number, default: 0 },
   },
-  { _id: true }
-);
 
+  exercises: { type: [ExerciseSchema], default: [] },
+});
 const WeekSchema = new Schema(
   {
     weekIndex: { type: Number, required: true }, // 1..N
@@ -77,7 +76,7 @@ const WeekSchema = new Schema(
 
     days: { type: [DaySchema], default: [] },
   },
-  { _id: true }
+  { _id: true },
 );
 
 const MesoSchema = new Schema(
@@ -89,7 +88,7 @@ const MesoSchema = new Schema(
     notes: { type: String, default: "" },
     deloadEvery: { type: Number, default: 0 }, // e.g. 4 -> every 4th week
   },
-  { _id: true }
+  { _id: true },
 );
 
 const TrainingPlanSchema = new Schema(
@@ -139,14 +138,15 @@ const TrainingPlanSchema = new Schema(
     // Audit
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    weekStart: { type: String, default: "", index: true },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Ensure a trainer doesn't accidentally set multiple active published plans for same client
 TrainingPlanSchema.index(
   { trainerId: 1, clientId: 1, status: 1, isActive: 1 },
-  { partialFilterExpression: { status: "published", isActive: true } }
+  { partialFilterExpression: { status: "published", isActive: true } },
 );
 
 module.exports = mongoose.model("TrainingPlan", TrainingPlanSchema);
