@@ -183,11 +183,11 @@ const UserSchema = new Schema(
     nutritionProfile: {
       dietType: {
         type: String,
-        enum: ["standard", "vegetarian", "vegan", "keto"],
+        enum: ["standard", "vegetarian", "vegan", "keto", "gluten-free"],
         default: "standard",
       },
 
-      // 👇 ahora dinámico
+      //  ahora dinámico
       intolerances: [{ type: String }],
 
       allergies: [{ type: String }],

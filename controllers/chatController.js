@@ -10,35 +10,83 @@ const openai = new OpenAI({
 // === Chat Completion Controller ===
 exports.chatCompletion = async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { type, data } = req.body;
 
-    if (!prompt) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Prompt is required." });
+    if (!type || !data) {
+      return res.status(400).json({
+        success: false,
+        error: "type and data are required",
+      });
+    }
+
+    let systemPrompt = "";
+    let userPrompt = "";
+
+    if (type === "nutrition_strategy") {
+      systemPrompt = `
+You are a senior clinical nutritionist and metabolic expert.
+
+Your job is NOT to calculate calories.
+
+Your job is to:
+- analyze the user context
+- define a nutrition strategy
+- output structured JSON ONLY
+
+Rules:
+- Do NOT explain
+- Do NOT add text
+- Return ONLY JSON
+`;
+
+      userPrompt = `
+User data:
+${JSON.stringify(data, null, 2)}
+
+Return JSON with:
+{
+  "proteinMultiplier": number,
+  "carbMultiplier": number,
+  "fatMultiplier": number,
+  "maxCarbs": number | null,
+  "notes": string[],
+  "alerts": string[]
+}
+`;
     }
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: "You are a helpful assistant." },
-        { role: "user", content: prompt },
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
       ],
     });
 
-    const responseContent = response.choices[0].message.content;
+    let content = response.choices[0].message.content;
 
-    console.log("OpenAI Request completed");
-    res.status(200).json({ success: true, response: responseContent });
+    // 🔥 IMPORTANTE: parsear JSON seguro
+    let parsed;
+
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      return res.status(500).json({
+        success: false,
+        error: "Invalid AI response format",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: parsed,
+    });
   } catch (error) {
-    console.error(
-      "Error with OpenAI API:",
-      error.response ? error.response.data : error.message
-    );
+    console.error(error);
 
     res.status(500).json({
       success: false,
-      error: "An error occurred while processing the request.",
+      error: "AI processing error",
     });
   }
 };
@@ -198,7 +246,7 @@ exports.update = async (req, res) => {
         ...(subCategory && { subCategory }),
         date: Date.now(),
       },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     if (!updatedEntry) {
