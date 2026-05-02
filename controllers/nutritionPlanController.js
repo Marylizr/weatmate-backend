@@ -1,62 +1,10 @@
 const NutritionPlan = require("../models/NutritionPlan");
 const User = require("../models/userModel");
-const { buildNutritionProfile } = require("../nutritionEngine/profile");
 
-// =============================
-// GENERADOR INTELIGENTE
-// =============================
-const generatePlanLogic = (user) => {
-  const weight = user.weight || 70;
-  const goal = user.goal || "maintenance";
-
-  let calories = 0;
-
-  //  BASE CALÓRICA
-  if (goal === "fat_loss") {
-    calories = weight * 22;
-  } else if (goal === "muscle_gain") {
-    calories = weight * 30;
-  } else {
-    calories = weight * 26;
-  }
-
-  // AJUSTES POR CONTEXTO FEMENINO
-  const cyclePhase = user?.femaleProfile?.cycleData?.phase;
-
-  if (cyclePhase === "luteal") {
-    calories += 150;
-  }
-
-  if (cyclePhase === "menstrual") {
-    calories -= 100;
-  }
-
-  //  MACROS
-  const protein = Math.round(weight * 2); // g
-  const fats = Math.round(weight * 0.8); // g
-
-  const remainingCalories = calories - (protein * 4 + fats * 9);
-  const carbs = Math.max(Math.round(remainingCalories / 4), 0);
-
-  return {
-    calories: Math.round(calories),
-    macros: {
-      protein,
-      carbs,
-      fats,
-    },
-    context: {
-      goal: user.goal,
-      weight: user.weight,
-      cyclePhase,
-    },
-  };
-};
 
 // =============================
 // CREATE PLAN
 // =============================
-
 exports.createPlan = async (req, res) => {
   try {
     const { userId, duration } = req.body;
@@ -65,40 +13,46 @@ exports.createPlan = async (req, res) => {
       return res.status(400).json({ error: "userId is required" });
     }
 
-    //  Traer usuario
+    // 🔹 Traer usuario
     const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    //  PERFIL NUTRICIONAL (FUENTE DE VERDAD)
+    // =============================
+    // CORE ENGINE (SOURCE OF TRUTH)
+    // =============================
     const profile = buildNutritionProfile(user);
-    console.log("PROFILE META:", profile.meta);
+
     if (!profile) {
-      return res
-        .status(400)
-        .json({ error: "Invalid user data for nutrition profile" });
+      return res.status(400).json({
+        error: "Invalid user data for nutrition profile",
+      });
     }
 
-    //  GENERAR CONTEXTO ADICIONAL (si usas generatePlanLogic)
-    const generated = generatePlanLogic(user);
-
-    //  CREAR PLAN
+    // =============================
+    // CREAR PLAN
+    // =============================
     const newPlan = new NutritionPlan({
       userId,
       trainerId: req.user?._id,
       duration: duration || "weekly",
 
-      // CORE
+      //  CORE
       calories: profile.calories,
       macros: profile.macros,
 
-      //  AQUÍ ESTÁ EL FIX IMPORTANTE
+      //  META (IMPORTANTÍSIMO PARA FRONT)
       meta: profile.meta,
 
-      // CONTEXTO EXTRA (opcional)
-      context: generated?.context || {},
+      //  CONTEXTO
+      context: {
+        goal: profile.goal,
+        weight: profile.weight,
+        conditions: profile.flags,
+        cyclePhase: user?.femaleProfile?.cycleData?.currentPhase || null,
+      },
 
       meals: [],
     });
@@ -113,8 +67,8 @@ exports.createPlan = async (req, res) => {
     console.error("Error creating nutrition plan:", error);
     res.status(500).json({ error: "Server error" });
   }
-  console.log("PROFILE META:", profile.meta);
 };
+
 // =============================
 // GET PLAN BY USER
 // =============================

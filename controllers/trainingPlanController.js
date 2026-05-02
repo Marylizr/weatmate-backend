@@ -1,6 +1,7 @@
 // controllers/trainingPlanController.js
 const mongoose = require("mongoose");
 const TrainingPlan = require("../models/trainingPlanModel");
+const User = require("../models/userModel");
 
 const isObjectId = (v) => mongoose.Types.ObjectId.isValid(String(v || ""));
 
@@ -132,6 +133,8 @@ exports.create = async (req, res) => {
       days: DAY_KEYS.map((key, index) => {
         const exercises = Array.isArray(daysObj[key]) ? daysObj[key] : [];
 
+        const safeMacros = macrosObj?.[key] || {};
+
         return {
           dayOfWeek: index,
           date: weekStart ? addDays(weekStart, index) : "",
@@ -140,7 +143,7 @@ exports.create = async (req, res) => {
           focus: dayTypes[key] === "rest" ? "recovery" : "",
           notes: microNotes || "",
 
-          exercises: (daysObj[key] || []).map((ex, i) => ({
+          exercises: exercises.map((ex, i) => ({
             workoutId: ex.workoutId || ex._id,
             order: i,
 
@@ -160,11 +163,12 @@ exports.create = async (req, res) => {
             substitutions: [],
           })),
 
+          // MACROS LIMPIOS Y SEGUROS
           macros: {
-            calories: Number(macrosObj?.[key]?.calories || 0),
-            protein: Number(macrosObj?.[key]?.protein || 0),
-            carbs: Number(macrosObj?.[key]?.carbs || 0),
-            fats: Number(macrosObj?.[key]?.fats || 0),
+            calories: Number(safeMacros.calories) || 0,
+            protein: Number(safeMacros.protein) || 0,
+            carbs: Number(safeMacros.carbs) || 0,
+            fats: Number(safeMacros.fats) || 0,
           },
         };
       }),
@@ -326,36 +330,54 @@ exports.update = async (req, res) => {
     }
 
     // Allowed draft update fields
-    const allowedTop = [
-      "title",
-      "description",
-      "macroGoal",
-      "startDate",
-      "endDate",
-      "totalWeeks",
-      "mesocycles",
-      "weeks",
-      "isActive",
-    ];
-    const updateData = {};
+ const allowedTop = [
+   "title",
+   "description",
+   "macroGoal",
+   "weekStart", 
+   "startDate",
+   "endDate",
+   "totalWeeks",
+   "mesocycles",
+   "weeks",
+   "isActive",
+ ];
+   const updateData = {};
 
-    for (const k of allowedTop) {
-         if (Object.prototype.hasOwnProperty.call(updateData, "weekStart"))
-           updateData.weekStart = normalizeYYYYMMDD(updateData.weekStart) || "";
-    }
+   for (const k of allowedTop) {
+     if (Object.prototype.hasOwnProperty.call(req.body, k)) {
+       updateData[k] = req.body[k];
+     }
+   }
 
-    if (Object.prototype.hasOwnProperty.call(updateData, "title"))
-      updateData.title = safeStr(updateData.title) || plan.title;
-    if (Object.prototype.hasOwnProperty.call(updateData, "description"))
-      updateData.description = safeStr(updateData.description) || "";
-    if (Object.prototype.hasOwnProperty.call(updateData, "macroGoal"))
-      updateData.macroGoal = safeStr(updateData.macroGoal) || "";
-    if (Object.prototype.hasOwnProperty.call(updateData, "startDate"))
-      updateData.startDate = normalizeYYYYMMDD(updateData.startDate) || "";
-    if (Object.prototype.hasOwnProperty.call(updateData, "endDate"))
-      updateData.endDate = normalizeYYYYMMDD(updateData.endDate) || "";
-    if (Object.prototype.hasOwnProperty.call(updateData, "totalWeeks"))
-      updateData.totalWeeks = toInt(updateData.totalWeeks, plan.totalWeeks);
+   // NORMALIZACIÓN
+   if (updateData.weekStart) {
+     updateData.weekStart = normalizeYYYYMMDD(updateData.weekStart);
+   }
+
+   if (updateData.title) {
+     updateData.title = safeStr(updateData.title);
+   }
+
+   if (updateData.description) {
+     updateData.description = safeStr(updateData.description);
+   }
+
+   if (updateData.macroGoal) {
+     updateData.macroGoal = safeStr(updateData.macroGoal);
+   }
+
+   if (updateData.startDate) {
+     updateData.startDate = normalizeYYYYMMDD(updateData.startDate);
+   }
+
+   if (updateData.endDate) {
+     updateData.endDate = normalizeYYYYMMDD(updateData.endDate);
+   }
+
+   if (updateData.totalWeeks) {
+     updateData.totalWeeks = toInt(updateData.totalWeeks, plan.totalWeeks);
+   }
 
     // Prevent clients from changing status/version/publishedAt in update
     delete updateData.status;
@@ -578,7 +600,7 @@ exports.getActiveToday = async (req, res) => {
     }
 
     if (!foundDay) {
-      return res.status(200).jsonjson({
+      return res.status(200).json({
         planId: plan._id,
         title: plan.title,
         message: "No session found for the requested day.",
@@ -686,11 +708,11 @@ exports.getTrainerDashboard = async (req, res) => {
 
     // trainer can only access own clients
     if (!isAdmin) {
-      if (!user.trainerId || user.trainerId.toString() !== req.user.id) {
-        return res
-          .status(403)
-          .json({ message: "Access denied to this client." });
-      }
+     if (!user.trainerId || String(user.trainerId) !== String(req.user._id)) {
+       return res
+         .status(403)
+         .json({ message: "Access denied to this client." });
+     }
     }
 
     // ---------- WEEK RANGE ----------
@@ -701,12 +723,14 @@ exports.getTrainerDashboard = async (req, res) => {
     weekEnd.setHours(23, 59, 59, 999);
 
     // ---------- TRAINING PLAN ----------
-    const trainingPlan = await TrainingPlan.findOne({
-      clientId,
-      weekStart,
-    })
-      .populate("days.workouts.workoutId")
-      .lean();
+
+   const weekStartDate = startOfWeek(baseDate);
+   const weekStartStr = weekStartDate.toISOString().split("T")[0];
+
+   const trainingPlan = await TrainingPlan.findOne({
+     clientId,
+     weekStart: weekStartStr,
+   });
 
     // ---------- RESPONSE ----------
     return res.status(200).json({
