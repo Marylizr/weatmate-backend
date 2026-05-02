@@ -1,5 +1,6 @@
 const NutritionPlan = require("../models/NutritionPlan");
 const User = require("../models/userModel");
+const { buildNutritionProfile } = require("../nutritionEngine/profile");
 
 // =============================
 // GENERADOR INTELIGENTE
@@ -55,6 +56,7 @@ const generatePlanLogic = (user) => {
 // =============================
 // CREATE PLAN
 // =============================
+
 exports.createPlan = async (req, res) => {
   try {
     const { userId, duration } = req.body;
@@ -63,28 +65,42 @@ exports.createPlan = async (req, res) => {
       return res.status(400).json({ error: "userId is required" });
     }
 
-    //  Traer usuario real
+    //  Traer usuario
     const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    //  Generar plan automáticamente
+    //  PERFIL NUTRICIONAL (FUENTE DE VERDAD)
+    const profile = buildNutritionProfile(user);
+    console.log("PROFILE META:", profile.meta);
+    if (!profile) {
+      return res
+        .status(400)
+        .json({ error: "Invalid user data for nutrition profile" });
+    }
+
+    //  GENERAR CONTEXTO ADICIONAL (si usas generatePlanLogic)
     const generated = generatePlanLogic(user);
 
-    //  Crear plan
+    //  CREAR PLAN
     const newPlan = new NutritionPlan({
       userId,
-      trainerId: req.user?._id, // importante: trainer logueado
+      trainerId: req.user?._id,
       duration: duration || "weekly",
 
-      calories: generated.calories,
-      macros: generated.macros,
+      // CORE
+      calories: profile.calories,
+      macros: profile.macros,
 
-      meals: [], // se llenará luego desde frontend
+      //  AQUÍ ESTÁ EL FIX IMPORTANTE
+      meta: profile.meta,
 
-      context: generated.context,
+      // CONTEXTO EXTRA (opcional)
+      context: generated?.context || {},
+
+      meals: [],
     });
 
     const savedPlan = await newPlan.save();
@@ -97,8 +113,8 @@ exports.createPlan = async (req, res) => {
     console.error("Error creating nutrition plan:", error);
     res.status(500).json({ error: "Server error" });
   }
+  console.log("PROFILE META:", profile.meta);
 };
-
 // =============================
 // GET PLAN BY USER
 // =============================

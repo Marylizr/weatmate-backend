@@ -24,33 +24,30 @@ exports.chatCompletion = async (req, res) => {
 
     if (type === "nutrition_strategy") {
       systemPrompt = `
-You are a senior clinical nutritionist and metabolic expert.
+You are a senior clinical nutritionist.
 
-Your job is NOT to calculate calories.
-
-Your job is to:
-- analyze the user context
-- define a nutrition strategy
-- output structured JSON ONLY
+Your job:
+- analyze user physiology
+- analyze current macros
+- adjust macro ratios (NOT calories)
 
 Rules:
-- Do NOT explain
-- Do NOT add text
-- Return ONLY JSON
-`;
+- protein MUST be based on body weight
+- fats MUST be within healthy hormonal range
+- carbs = remaining calories
+- NEVER produce extreme values
 
+Return JSON ONLY
+`;
       userPrompt = `
-User data:
+User context:
 ${JSON.stringify(data, null, 2)}
 
-Return JSON with:
+Return JSON:
 {
-  "proteinMultiplier": number,
-  "carbMultiplier": number,
-  "fatMultiplier": number,
-  "maxCarbs": number | null,
-  "notes": string[],
-  "alerts": string[]
+  "proteinPerKg": number,
+  "fatsPerKg": number,
+  "reasoning": string[]
 }
 `;
     }
@@ -61,11 +58,10 @@ Return JSON with:
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
+      response_format: { type: "json_object" }, // IMPORTANTE
     });
 
-    let content = response.choices[0].message.content;
-
-    // 🔥 IMPORTANTE: parsear JSON seguro
+    //  IMPORTANTE: parsear JSON seguro
     let parsed;
 
     try {

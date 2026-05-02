@@ -73,6 +73,11 @@ const NutritionPlanSchema = new Schema(
       cyclePhase: { type: String },
       conditions: [{ type: String }],
     },
+    meta: {
+      bmr: Number,
+      tdee: Number,
+      adjustedTdee: Number,
+    },
 
     createdAt: {
       type: Date,
