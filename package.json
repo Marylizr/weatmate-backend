@@ -36,7 +36,7 @@
     "multer": "^2.1.1",
     "nodemailer": "^6.9.16",
     "openai": "^4.104.0",
-    "pdf-parse": "^2.4.5",
+    "pdf-parse": "^1.1.1",
     "react-calendar": "^4.6.0",
     "tesseract.js": "^7.0.0",
     "zod": "^3.25.76"
