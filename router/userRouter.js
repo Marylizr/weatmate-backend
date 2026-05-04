@@ -203,6 +203,31 @@ userRouter.get(
 );
 
 // ==============================
+// INJURY PROFILE ROUTES
+// ==============================
+
+userRouter.patch(
+  "/:id/injury-profile",
+  authMiddleware,
+  requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  canAccessUserByRole,
+  userController.updateInjuryProfile,
+);
+
+// ==============================
+// ACCESSIBILITY PROFILE ROUTES
+// ==============================
+
+userRouter.patch(
+  "/:id/accessibility-profile",
+  authMiddleware,
+  requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  canAccessUserByRole,
+  userController.updateAccessibilityProfile,
+);
+// ==============================
 // NUTRITION HISTORY
 // ==============================
 

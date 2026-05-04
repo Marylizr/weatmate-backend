@@ -2324,3 +2324,117 @@ exports.getUserCycle = async (req, res) => {
     });
   }
 };
+
+///////////INJURIES//////////////
+
+// ------------------------------------------------------
+// INJURY PROFILE
+// ------------------------------------------------------
+exports.updateInjuryProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid user ID." });
+    }
+
+    const access = await canAccessTargetUser({
+      req,
+      targetUserId: id,
+    });
+
+    if (!access.ok) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
+    const injuryProfile = sanitizeInjuryProfile(req.body?.injuryProfile || req.body);
+
+    const user = await User.findById(id).select(
+      "injuryProfile accessibilityProfile medicalFlags"
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    user.injuryProfile = injuryProfile;
+
+    user.medicalFlags = buildHealthFlagsFromProfiles({
+      medicalFlags: user.medicalFlags || [],
+      injuryProfile,
+      accessibilityProfile: user.accessibilityProfile,
+    });
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "Injury profile updated successfully",
+      injuryProfile: user.injuryProfile,
+      medicalFlags: user.medicalFlags || [],
+    });
+  } catch (error) {
+    console.error("updateInjuryProfile error:", error);
+
+    return res.status(500).json({
+      message: "Unable to update injury profile",
+      error: error.message,
+    });
+  }
+};
+
+// ------------------------------------------------------
+// ACCESSIBILITY PROFILE
+// ------------------------------------------------------
+exports.updateAccessibilityProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid user ID." });
+    }
+
+    const access = await canAccessTargetUser({
+      req,
+      targetUserId: id,
+    });
+
+    if (!access.ok) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
+    const accessibilityProfile = sanitizeAccessibilityProfile(
+      req.body?.accessibilityProfile || req.body
+    );
+
+    const user = await User.findById(id).select(
+      "injuryProfile accessibilityProfile medicalFlags"
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    user.accessibilityProfile = accessibilityProfile;
+
+    user.medicalFlags = buildHealthFlagsFromProfiles({
+      medicalFlags: user.medicalFlags || [],
+      injuryProfile: user.injuryProfile,
+      accessibilityProfile,
+    });
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "Accessibility profile updated successfully",
+      accessibilityProfile: user.accessibilityProfile,
+      medicalFlags: user.medicalFlags || [],
+    });
+  } catch (error) {
+    console.error("updateAccessibilityProfile error:", error);
+
+    return res.status(500).json({
+      message: "Unable to update accessibility profile",
+      error: error.message,
+    });
+  }
+};

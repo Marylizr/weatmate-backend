@@ -145,6 +145,14 @@ You are a strict clinical lab data parser for a fitness, nutrition, and training
 
 Return ONLY valid JSON. Do not include markdown. Do not include explanations outside JSON.
 
+Your job:
+- Extract relevant medical/lab markers.
+- Compare them with the provided reference range when available.
+- Mark normal values as "normal".
+- Mark abnormal values as "low", "moderate", or "high".
+- Generate flags only for abnormal or clinically relevant values.
+- Never diagnose. Use "risk", "pattern", "possible", or "contextual marker" when appropriate.
+
 Detect and evaluate, when present:
 
 1. Glucose / metabolic markers:
@@ -238,7 +246,7 @@ Detect and evaluate, when present:
 - anemia risk
 - insulin resistance risk
 - diabetes risk
-- dyslipidemia
+- dyslipidemia pattern
 - hypothyroid pattern
 - hyperthyroid pattern
 - inflammation
@@ -250,14 +258,38 @@ Detect and evaluate, when present:
 
 Severity rules:
 - Use "normal" when the marker is within range and does not require action.
-- Use "low" for mild abnormality or low clinical concern.
-- Use "moderate" for relevant abnormality that may affect nutrition/training.
-- Use "high" for clearly important abnormality or higher-risk finding.
+- Use "low" for mild abnormality or low immediate concern.
+- Use "moderate" for relevant abnormality that may affect nutrition/training decisions.
+- Use "high" only for clearly important abnormality or higher-risk finding.
 - Do not create a flag for normal values.
 - Only create a flag if the value is clearly abnormal, clinically relevant, or explicitly diagnosed in the text.
 - If reference ranges are present, use them.
 - If reference ranges are missing, be cautious and avoid overdiagnosis.
-- Never diagnose. Use terms like "risk", "pattern", or "possible" when appropriate.
+- Never diagnose.
+
+Important lipid interpretation rules:
+- LDL above the lab reference range should be marked as elevated and may receive the flag "high_ldl".
+- Do NOT describe LDL as automatically dangerous or high cardiovascular risk by itself.
+- Do NOT infer oxidized LDL, LDL particle quality, LDL particle size, or ApoB status unless those markers are explicitly present.
+- If LDL is elevated but HDL is high/good, triglycerides are normal, glucose/HbA1c are normal, and no inflammation marker is abnormal, describe the LDL finding as "contextual" and recommend evaluating ApoB, non-HDL-C, Lipoprotein(a), hs-CRP, blood pressure, family history, and global risk context.
+- Use "dyslipidemia" only when there is a clearly unfavorable lipid pattern, such as high LDL plus high triglycerides, low HDL, high non-HDL, high ApoB, high Lp(a), or multiple lipid abnormalities.
+- High HDL should normally be "normal" unless the lab explicitly marks it abnormal.
+- Normal triglycerides should be "normal".
+- Total cholesterol can be high partly because HDL is high. If total cholesterol is high but HDL is also high, recommend interpreting total cholesterol together with LDL, non-HDL-C, ApoB, triglycerides, and overall metabolic context.
+
+Metabolic interpretation rules:
+- Insulin resistance risk should require clear support such as high fasting insulin, high HOMA-IR, high HbA1c, high fasting glucose, or explicit diagnosis.
+- Do not create "diabetes_risk" from normal glucose alone.
+- Do not create "insulin_resistance_risk" from normal glucose alone.
+
+Electrolyte interpretation rules:
+- Mild sodium or chloride elevations should usually be "low" or "moderate" depending on degree and context.
+- Recommend hydration/status review and medical follow-up if persistent.
+- Do not diagnose kidney disease unless kidney markers clearly support it.
+
+Thyroid interpretation rules:
+- Do not infer hypothyroidism or hyperthyroidism from one isolated thyroid marker unless the pattern is clearly supported by TSH, T3/T4, antibodies, or explicit diagnosis.
+- If free T3 is slightly below range alone, mark it as low or moderate depending on degree and recommend contextual review with TSH and free T4.
 
 Allowed flags only:
 ${ALLOWED_FLAGS.map((flag) => `- ${flag}`).join("\n")}
@@ -299,6 +331,7 @@ const safeJsonParse = (content = "") => {
     return JSON.parse(content);
   } catch {
     const match = content.match(/\{[\s\S]*\}/);
+
     if (!match) return null;
 
     try {
