@@ -139,6 +139,12 @@ const TrainingPlanSchema = new Schema(
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
     weekStart: { type: String, default: "", index: true },
+    healthSnapshot: {
+      volumeMultiplier: Number,
+      intensityCap: Number,
+      flags: [String],
+      generatedAt: Date,
+    },
   },
   { timestamps: true },
 );

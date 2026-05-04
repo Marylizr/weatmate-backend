@@ -1,7 +1,8 @@
 const express = require("express");
 const userController = require("../controllers/usercontroller");
 const userRouter = express.Router();
-
+const multer = require("multer");
+const upload = multer({ dest: "uploads/" });
 const allowRoles = require("../auth/allowRoles");
 const canAccessUserByRole = require("../auth/canAccessUserByRole");
 const {
@@ -9,7 +10,6 @@ const {
   IsAdmin,
   requireVerified,
 } = require("../auth/authMiddleware");
-const authenticateTrainer = require("../auth/authenticateTrainer");
 
 // ==============================
 // AUTH / PROFILE ROUTES
@@ -19,44 +19,51 @@ const authenticateTrainer = require("../auth/authenticateTrainer");
 userRouter.get("/me", authMiddleware, userController.findOne);
 
 // Public sign up
+// This should only create a basic/client user inside the controller
 userRouter.post("/create-profile", userController.create);
 
-// Create new user by Admin
-userRouter.post("/", authMiddleware, IsAdmin, userController.createUserByAdmin);
+// Dashboard create user
+// Admin can create: basic, personal-trainer, admin
+// Personal trainer can create: basic client only
+userRouter.post(
+  "/",
+  authMiddleware,
+  requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  userController.createUserByAdmin,
+);
 
-// Get all trainers (public)
+// Get all trainers
 userRouter.get("/trainers", userController.getAllTrainers);
 
-// Send verification email (if you call it like: POST /user/send-verification { userId } or similar)
-// If your frontend calls it differently, keep the function but adjust route later.
+// Send verification email
 userRouter.post("/send-verification", userController.sendVerificationEmail);
 
 // Confirm email
 userRouter.get("/verify-email", userController.verifyEmail);
 
-// Fetch all users (Admin + PT only)
+// Fetch all users
 userRouter.get(
   "/",
   authMiddleware,
   requireVerified,
   allowRoles("admin", "personal-trainer"),
-  authenticateTrainer,
   userController.findAll,
 );
 
 // ==============================
-// SELF UPDATE (legacy + nice-to-have)
+// SELF UPDATE
 // ==============================
 
-userRouter.put("/", authMiddleware, requireVerified, userController.update); // update self (legacy)
-userRouter.put("/me", authMiddleware, requireVerified, userController.update); // update self (nice)
-userRouter.put("/:id", authMiddleware, userController.update); // update self (nice) - alternative route if frontend prefers this format
+userRouter.put("/", authMiddleware, requireVerified, userController.update);
+
+userRouter.put("/me", authMiddleware, requireVerified, userController.update);
 
 // ==============================
-// FEMALE PROFILE ROUTES (IMPORTANT: before /:id)
+// FEMALE PROFILE ROUTES
+// IMPORTANT: before /:id
 // ==============================
 
-// Self updates femaleProfile
 userRouter.put(
   "/cycle",
   authMiddleware,
@@ -71,26 +78,35 @@ userRouter.post(
   userController.addMyCycleLog,
 );
 
-userRouter.get("/cycle/me", authMiddleware, userController.getMyCycle);
+userRouter.get(
+  "/cycle/me",
+  authMiddleware,
+  requireVerified,
+  userController.getMyCycle,
+);
 
 userRouter.get(
   "/:id/cycle",
   authMiddleware,
+  requireVerified,
   allowRoles("admin", "personal-trainer"),
   canAccessUserByRole,
   userController.getUserCycle,
 );
 
-// Trainer/Admin updates client's femaleProfile
 userRouter.patch(
   "/:id/femaleProfile",
   authMiddleware,
+  requireVerified,
   allowRoles("admin", "personal-trainer"),
   canAccessUserByRole,
   userController.updateClientFemaleProfile,
 );
 
-// Client snapshot for Training dashboard (trainer/admin)
+// ==============================
+// CLIENT SNAPSHOT
+// ==============================
+
 userRouter.get(
   "/clientSnapshot/:id",
   authMiddleware,
@@ -102,6 +118,7 @@ userRouter.get(
 
 // ==============================
 // SPECIFIC QUERY ROUTES
+// IMPORTANT: before /:id
 // ==============================
 
 userRouter.get(
@@ -119,23 +136,6 @@ userRouter.get(
 );
 
 // ==============================
-// ADMIN/TRAINER UPDATE / DELETE
-// ==============================
-
-// Admin OR Trainer (only assigned clients) can update user by id
-userRouter.put(
-  "/:id",
-  authMiddleware,
-  requireVerified,
-  allowRoles("admin", "personal-trainer"),
-  canAccessUserByRole,
-  userController.update,
-);
-
-// Admin deletes a user
-userRouter.delete("/:id", authMiddleware, IsAdmin, userController.delete);
-
-// ==============================
 // SESSION NOTES ROUTES
 // ==============================
 
@@ -143,6 +143,8 @@ userRouter.post(
   "/:id/session-notes",
   authMiddleware,
   requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  canAccessUserByRole,
   userController.addSessionNote,
 );
 
@@ -150,6 +152,8 @@ userRouter.get(
   "/:id/session-notes",
   authMiddleware,
   requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  canAccessUserByRole,
   userController.getSessionNotes,
 );
 
@@ -161,6 +165,8 @@ userRouter.get(
   "/:id/user-preferences",
   authMiddleware,
   requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  canAccessUserByRole,
   userController.getUserPreferences,
 );
 
@@ -168,6 +174,8 @@ userRouter.post(
   "/:id/user-preferences",
   authMiddleware,
   requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  canAccessUserByRole,
   userController.addUserPreference,
 );
 
@@ -179,6 +187,9 @@ userRouter.post(
   "/:id/medical-history",
   authMiddleware,
   requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  canAccessUserByRole,
+  upload.single("file"),
   userController.addMedicalHistory,
 );
 
@@ -186,9 +197,36 @@ userRouter.get(
   "/:id/medical-history",
   authMiddleware,
   requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  canAccessUserByRole,
   userController.getMedicalHistory,
 );
 
+// ==============================
+// INJURY PROFILE ROUTES
+// ==============================
+
+userRouter.patch(
+  "/:id/injury-profile",
+  authMiddleware,
+  requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  canAccessUserByRole,
+  userController.updateInjuryProfile,
+);
+
+// ==============================
+// ACCESSIBILITY PROFILE ROUTES
+// ==============================
+
+userRouter.patch(
+  "/:id/accessibility-profile",
+  authMiddleware,
+  requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  canAccessUserByRole,
+  userController.updateAccessibilityProfile,
+);
 // ==============================
 // NUTRITION HISTORY
 // ==============================
@@ -197,7 +235,34 @@ userRouter.post(
   "/:id/nutrition-history",
   authMiddleware,
   requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  canAccessUserByRole,
   userController.addNutritionHistory,
+);
+
+// ==============================
+// ADMIN/TRAINER UPDATE / DELETE
+// IMPORTANT: dynamic routes near the bottom
+// ==============================
+
+// Admin OR Trainer can update user by id
+// canAccessUserByRole must ensure trainer only accesses assigned clients
+userRouter.put(
+  "/:id",
+  authMiddleware,
+  requireVerified,
+  allowRoles("admin", "personal-trainer"),
+  canAccessUserByRole,
+  userController.update,
+);
+
+// Admin deletes a user
+userRouter.delete(
+  "/:id",
+  authMiddleware,
+  requireVerified,
+  IsAdmin,
+  userController.delete,
 );
 
 // ==============================

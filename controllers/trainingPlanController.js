@@ -2,6 +2,8 @@
 const mongoose = require("mongoose");
 const TrainingPlan = require("../models/trainingPlanModel");
 const User = require("../models/userModel");
+const { buildHealthPlan } = require("../services/healthEngine");
+const User = require("../models/userModel");
 
 const isObjectId = (v) => mongoose.Types.ObjectId.isValid(String(v || ""));
 
@@ -46,6 +48,49 @@ const canClientReadPlan = (reqUser, plan) => {
     );
   }
   return false;
+};
+// controllers/trainingPlanController.js
+
+const applyHealthToPlan = (plan, user) => {
+  if (!plan || !user) return plan;
+
+  let health;
+
+  if (plan.healthSnapshot) {
+    health = {
+      trainingAdjustments: {
+        volumeMultiplier: plan.healthSnapshot.volumeMultiplier || 1,
+        intensityCap: plan.healthSnapshot.intensityCap || 10,
+      },
+      alerts: [],
+    };
+  } else {
+    health = buildHealthPlan({
+      medicalFlags: user.medicalFlags || [],
+      goal: user.goal,
+      fitness_level: user.fitness_level,
+    });
+  }
+
+  const { volumeMultiplier, intensityCap } = health.trainingAdjustments;
+
+  const adjustedWeeks = (plan.weeks || []).map((week) => ({
+    ...week,
+    days: (week.days || []).map((day) => ({
+      ...day,
+      exercises: (day.exercises || []).map((ex) => ({
+        ...ex,
+        sets: Math.max(1, Math.round((ex.sets || 0) * volumeMultiplier)),
+        rpe: Math.min(ex.rpe || 8, intensityCap),
+      })),
+    })),
+  }));
+
+  return {
+    ...plan,
+    weeks: adjustedWeeks,
+    healthAlerts: health.alerts || [],
+  };
 };
 
 // Build a default empty week structure (Mon-Sun)
@@ -294,7 +339,11 @@ exports.getById = async (req, res) => {
       return res.status(403).json({ message: "Access denied." });
     }
 
-    return res.status(200).json(plan);
+    const client = await User.findById(plan.clientId);
+
+    const adjustedPlan = applyHealthToPlan(plan.toObject(), client);
+
+    return res.status(200).json(adjustedPlan);
   } catch (err) {
     console.error("Error retrieving training plan:", err);
     return res.status(500).json({
@@ -330,54 +379,53 @@ exports.update = async (req, res) => {
     }
 
     // Allowed draft update fields
- const allowedTop = [
-   "title",
-   "description",
-   "macroGoal",
-   "weekStart", 
-   "startDate",
-   "endDate",
-   "totalWeeks",
-   "mesocycles",
-   "weeks",
-   "isActive",
- ];
-   const updateData = {};
+    const allowedTop = [
+      "title",
+      "description",
+      "macroGoal",
+      "weekStart",
+      "startDate",
+      "endDate",
+      "totalWeeks",
+      "mesocycles",
+      "weeks",
+      "isActive",
+    ];
+    const updateData = {};
 
-   for (const k of allowedTop) {
-     if (Object.prototype.hasOwnProperty.call(req.body, k)) {
-       updateData[k] = req.body[k];
-     }
-   }
+    for (const k of allowedTop) {
+      if (Object.prototype.hasOwnProperty.call(req.body, k)) {
+        updateData[k] = req.body[k];
+      }
+    }
 
-   // NORMALIZACIÓN
-   if (updateData.weekStart) {
-     updateData.weekStart = normalizeYYYYMMDD(updateData.weekStart);
-   }
+    if (Object.prototype.hasOwnProperty.call(updateData, "weekStart")) {
+      updateData.weekStart = normalizeYYYYMMDD(updateData.weekStart) || "";
+    }
 
-   if (updateData.title) {
-     updateData.title = safeStr(updateData.title);
-   }
+    if (updateData.title) {
+      updateData.title = safeStr(updateData.title);
+    }
 
-   if (updateData.description) {
-     updateData.description = safeStr(updateData.description);
-   }
+    if (updateData.description) {
+      updateData.description = safeStr(updateData.description);
+    }
 
-   if (updateData.macroGoal) {
-     updateData.macroGoal = safeStr(updateData.macroGoal);
-   }
+    if (updateData.macroGoal) {
+      updateData.macroGoal = safeStr(updateData.macroGoal);
+    }
 
-   if (updateData.startDate) {
-     updateData.startDate = normalizeYYYYMMDD(updateData.startDate);
-   }
+    if (updateData.startDate) {
+      updateData.startDate = normalizeYYYYMMDD(updateData.startDate);
+    }
 
-   if (updateData.endDate) {
-     updateData.endDate = normalizeYYYYMMDD(updateData.endDate);
-   }
+    if (updateData.endDate) {
+      updateData.endDate = normalizeYYYYMMDD(updateData.endDate);
+    }
 
-   if (updateData.totalWeeks) {
-     updateData.totalWeeks = toInt(updateData.totalWeeks, plan.totalWeeks);
-   }
+    if (updateData.totalWeeks) {
+      updateData.totalWeeks = toInt(updateData.totalWeeks, plan.totalWeeks);
+    }
 
     // Prevent clients from changing status/version/publishedAt in update
     delete updateData.status;
@@ -441,6 +489,25 @@ exports.publish = async (req, res) => {
     plan.publishedAt = new Date();
     plan.version = toInt(plan.version, 1) + 1;
     plan.updatedBy = req.user._id;
+
+    const client = await User.findById(plan.clientId);
+
+    if (!client) {
+      return res.status(404).json({ message: "Client not found." });
+    }
+
+    const health = buildHealthPlan({
+      medicalFlags: client.medicalFlags || [],
+      goal: client.goal,
+      fitness_level: client.fitness_level,
+    });
+
+    plan.healthSnapshot = {
+      volumeMultiplier: health.trainingAdjustments.volumeMultiplier,
+      intensityCap: health.trainingAdjustments.intensityCap,
+      flags: client.medicalFlags || [],
+      generatedAt: new Date(),
+    };
 
     await plan.save();
 
@@ -661,10 +728,16 @@ exports.getActiveWeek = async (req, res) => {
     if (!week) return res.status(404).json({ message: "Week not found." });
 
     // Return week with only essential fields (still includes exercises)
+    const adjustedPlan = applyHealthToPlan(plan.toObject(), req.user);
+
+    const adjustedWeek = adjustedPlan.weeks.find(
+      (w) => Number(w.weekIndex) === Number(weekIndex),
+    );
+
     return res.status(200).json({
       planId: plan._id,
       title: plan.title,
-      week,
+      week: adjustedWeek,
     });
   } catch (err) {
     console.error("Error getting active week:", err);
@@ -708,11 +781,11 @@ exports.getTrainerDashboard = async (req, res) => {
 
     // trainer can only access own clients
     if (!isAdmin) {
-     if (!user.trainerId || String(user.trainerId) !== String(req.user._id)) {
-       return res
-         .status(403)
-         .json({ message: "Access denied to this client." });
-     }
+      if (!user.trainerId || String(user.trainerId) !== String(req.user._id)) {
+        return res
+          .status(403)
+          .json({ message: "Access denied to this client." });
+      }
     }
 
     // ---------- WEEK RANGE ----------
@@ -724,13 +797,13 @@ exports.getTrainerDashboard = async (req, res) => {
 
     // ---------- TRAINING PLAN ----------
 
-   const weekStartDate = startOfWeek(baseDate);
-   const weekStartStr = weekStartDate.toISOString().split("T")[0];
+    const weekStartDate = startOfWeek(baseDate);
+    const weekStartStr = weekStartDate.toISOString().split("T")[0];
 
-   const trainingPlan = await TrainingPlan.findOne({
-     clientId,
-     weekStart: weekStartStr,
-   });
+    const trainingPlan = await TrainingPlan.findOne({
+      clientId,
+      weekStart: weekStartStr,
+    });
 
     // ---------- RESPONSE ----------
     return res.status(200).json({
