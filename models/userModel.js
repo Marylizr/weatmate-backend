@@ -169,12 +169,18 @@ const UserSchema = new Schema(
     gender: {
       type: String,
       enum: ["female", "male"],
-      required: true,
+      default: "female",
     },
 
     fitness_level: {
       type: String,
       enum: ["beginner", "intermediate", "advanced"],
+      default: "beginner",
+    },
+    activityLevel: {
+      type: String,
+      enum: ["sedentary", "light", "moderate", "very_active", "athlete"],
+      default: "light",
     },
 
     // ==============================
@@ -198,6 +204,7 @@ const UserSchema = new Schema(
     // ==============================
     //  HEALTH FLAGS (FIXED)
     // ==============================
+
     medicalFlags: [
       {
         type: String,
@@ -206,10 +213,202 @@ const UserSchema = new Schema(
 
     medicalHistory: [
       {
-        history: String,
-        date: { type: Date, default: Date.now },
+        history: {
+          type: String,
+          default: "",
+        },
+        date: {
+          type: Date,
+          default: Date.now,
+        },
+        pdfUrl: {
+          type: String,
+          default: "",
+        },
+        analysis: {
+          summary: {
+            type: String,
+            default: "",
+          },
+          conditions: [
+            {
+              name: {
+                type: String,
+                default: "",
+              },
+              value: {
+                type: String,
+                default: "",
+              },
+              normalRange: {
+                type: String,
+                default: "",
+              },
+              severity: {
+                type: String,
+                enum: ["normal", "low", "moderate", "high", ""],
+                default: "",
+              },
+              recommendation: {
+                type: String,
+                default: "",
+              },
+            },
+          ],
+          flags: [
+            {
+              type: String,
+            },
+          ],
+        },
       },
     ],
+    ///// INJURIES /////
+    injuryProfile: {
+      hasActiveInjury: {
+        type: Boolean,
+        default: false,
+      },
+      injuries: [
+        {
+          area: {
+            type: String,
+            enum: [
+              "neck",
+              "shoulder",
+              "elbow",
+              "wrist",
+              "back",
+              "lower_back",
+              "hip",
+              "knee",
+              "ankle",
+              "foot",
+              "other",
+            ],
+            default: "other",
+          },
+          side: {
+            type: String,
+            enum: ["left", "right", "both", "unknown"],
+            default: "unknown",
+          },
+          status: {
+            type: String,
+            enum: ["active", "recovering", "resolved"],
+            default: "active",
+          },
+          severity: {
+            type: String,
+            enum: ["low", "moderate", "high"],
+            default: "moderate",
+          },
+          notes: {
+            type: String,
+            default: "",
+          },
+          date: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+    },
+    /////////accessibility /////////////
+    accessibilityProfile: {
+      hasReducedMobility: {
+        type: Boolean,
+        default: false,
+      },
+
+      hasDisability: {
+        type: Boolean,
+        default: false,
+      },
+
+      disabilityTypes: [
+        {
+          type: String,
+          enum: [
+            "motor",
+            "visual",
+            "hearing",
+            "cognitive",
+            "neurological",
+            "intellectual",
+            "respiratory",
+            "cardiovascular_limitation",
+            "chronic_pain",
+            "other",
+          ],
+        },
+      ],
+
+      mobilityLimitations: [
+        {
+          type: String,
+          enum: [
+            "walking",
+            "stairs",
+            "standing_long_periods",
+            "balance",
+            "range_of_motion",
+            "upper_body",
+            "lower_body",
+            "grip",
+            "coordination",
+            "floor_transitions",
+            "other",
+          ],
+        },
+      ],
+
+      assistiveDevices: [
+        {
+          type: String,
+          enum: [
+            "none",
+            "cane",
+            "walker",
+            "wheelchair",
+            "crutches",
+            "orthotic",
+            "prosthetic",
+            "hearing_aid",
+            "glasses",
+            "other",
+          ],
+        },
+      ],
+
+      trainingAdaptations: [
+        {
+          type: String,
+          enum: [
+            "seated_exercises",
+            "low_impact",
+            "machine_based",
+            "avoid_floor_work",
+            "extra_rest",
+            "balance_support",
+            "reduced_range_of_motion",
+            "avoid_jumping",
+            "avoid_running",
+            "avoid_overhead",
+            "supervision_required",
+            "clear_visual_cues",
+            "clear_audio_cues",
+            "simple_instructions",
+            "other",
+          ],
+        },
+      ],
+
+      notes: {
+        type: String,
+        default: "",
+      },
+    },
 
     preferences: [
       {
@@ -232,7 +431,17 @@ const UserSchema = new Schema(
 
     degree: String,
     experience: Number,
-    specializations: String,
+
+    specializations: {
+      type: [
+        {
+          type: String,
+          trim: true,
+        },
+      ],
+      default: [],
+    },
+
     bio: String,
     location: String,
 

@@ -1,120 +1,199 @@
 const NutritionPlan = require("../models/NutritionPlan");
 const User = require("../models/userModel");
 const { buildNutritionProfile } = require("../nutritionEngine/profile");
+const mongoose = require("mongoose");
+const { generatePlanLogic } = require("../services/generatePlanLogic");
 
 // =============================
 // GENERADOR INTELIGENTE
 // =============================
-const generatePlanLogic = (user) => {
-  const weight = user.weight || 70;
-  const goal = user.goal || "maintenance";
-
-  let calories = 0;
-
-  //  BASE CALÓRICA
-  if (goal === "fat_loss") {
-    calories = weight * 22;
-  } else if (goal === "muscle_gain") {
-    calories = weight * 30;
-  } else {
-    calories = weight * 26;
-  }
-
-  // AJUSTES POR CONTEXTO FEMENINO
-  const cyclePhase = user?.femaleProfile?.cycleData?.phase;
-
-  if (cyclePhase === "luteal") {
-    calories += 150;
-  }
-
-  if (cyclePhase === "menstrual") {
-    calories -= 100;
-  }
-
-  //  MACROS
-  const protein = Math.round(weight * 2); // g
-  const fats = Math.round(weight * 0.8); // g
-
-  const remainingCalories = calories - (protein * 4 + fats * 9);
-  const carbs = Math.max(Math.round(remainingCalories / 4), 0);
-
-  return {
-    calories: Math.round(calories),
-    macros: {
-      protein,
-      carbs,
-      fats,
-    },
-    context: {
-      goal: user.goal,
-      weight: user.weight,
-      cyclePhase,
-    },
-  };
-};
 
 // =============================
-// CREATE PLAN
+// CREATE NUTRITION PLAN
 // =============================
-
 exports.createPlan = async (req, res) => {
   try {
-    const { userId, duration } = req.body;
+    const {
+      userId,
+      duration,
+      calories: bodyCalories,
+      macros: bodyMacros,
+      meta: bodyMeta,
+      medicalFlags: bodyMedicalFlags,
+      activityLevel: bodyActivityLevel,
+      meals,
+    } = req.body || {};
 
     if (!userId) {
-      return res.status(400).json({ error: "userId is required" });
+      return res.status(400).json({
+        message: "userId is required",
+      });
     }
 
-    //  Traer usuario
-    const user = await User.findById(userId);
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        message: "Invalid userId.",
+      });
+    }
+
+    // =============================
+    // FETCH USER
+    // =============================
+    const user = await User.findById(userId).select("-password");
 
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({
+        message: "User not found",
+      });
     }
 
-    //  PERFIL NUTRICIONAL (FUENTE DE VERDAD)
-    const profile = buildNutritionProfile(user);
-    console.log("PROFILE META:", profile.meta);
-    if (!profile) {
-      return res
-        .status(400)
-        .json({ error: "Invalid user data for nutrition profile" });
+    // =============================
+    // ACCESS CONTROL
+    // =============================
+    const authRole = req.user?.role;
+    const authUserId = req.user?._id || req.user?.id;
+
+    const isAdmin = authRole === "admin";
+    const isTrainer = authRole === "personal-trainer";
+
+    if (!isAdmin && !isTrainer) {
+      return res.status(403).json({
+        message: "Access denied.",
+      });
     }
 
-    //  GENERAR CONTEXTO ADICIONAL (si usas generatePlanLogic)
-    const generated = generatePlanLogic(user);
+    if (isTrainer) {
+      const trainerOwnsClient =
+        user.trainerId && String(user.trainerId) === String(authUserId);
 
-    //  CREAR PLAN
+      if (!trainerOwnsClient) {
+        return res.status(403).json({
+          message: "Access denied to this client.",
+        });
+      }
+    }
+
+    // =============================
+    // PROFILE FROM ENGINE
+    // =============================
+    let profile = null;
+
+    try {
+      profile = buildNutritionProfile(user);
+    } catch (profileError) {
+      console.error("buildNutritionProfile error:", profileError);
+      profile = null;
+    }
+
+    // =============================
+    // SAFE MACROS SOURCE
+    // Priority:
+    // 1. Frontend body macros
+    // 2. Engine profile macros
+    // =============================
+    const sourceMacros =
+      bodyMacros && typeof bodyMacros === "object"
+        ? bodyMacros
+        : profile?.macros || null;
+
+    const sourceCalories =
+      bodyCalories !== undefined && bodyCalories !== null
+        ? bodyCalories
+        : profile?.calories;
+
+    const safeCalories = Math.round(Number(sourceCalories));
+
+    const safeMacros = {
+      protein: Math.round(Number(sourceMacros?.protein)),
+      carbs: Math.round(Number(sourceMacros?.carbs)),
+      fats: Math.round(Number(sourceMacros?.fats)),
+      fiber: Math.round(
+        Number(sourceMacros?.fiber || sourceMacros?.fiberTarget || 0),
+      ),
+    };
+
+    // =============================
+    // VALIDATION BEFORE MONGOOSE
+    // =============================
+    if (
+      !Number.isFinite(safeCalories) ||
+      safeCalories <= 0 ||
+      !Number.isFinite(safeMacros.protein) ||
+      safeMacros.protein < 0 ||
+      !Number.isFinite(safeMacros.carbs) ||
+      safeMacros.carbs < 0 ||
+      !Number.isFinite(safeMacros.fats) ||
+      safeMacros.fats < 0
+    ) {
+      return res.status(400).json({
+        message: "Calories and valid macros are required to create a nutrition plan.",
+        received: {
+          bodyCalories,
+          bodyMacros,
+          profileCalories: profile?.calories,
+          profileMacros: profile?.macros,
+        },
+      });
+    }
+
+    // =============================
+    // SAFE META
+    // =============================
+    const safeMeta = {
+      ...(profile?.meta || {}),
+      ...(bodyMeta && typeof bodyMeta === "object" ? bodyMeta : {}),
+    };
+
+    // =============================
+    // OPTIONAL CONTEXT
+    // =============================
+    let generated = null;
+
+    try {
+      generated = typeof generatePlanLogic === "function" ? generatePlanLogic(user) : null;
+    } catch (logicError) {
+      console.error("generatePlanLogic error:", logicError);
+      generated = null;
+    }
+
+    // =============================
+    // CREATE PLAN
+    // =============================
     const newPlan = new NutritionPlan({
       userId,
-      trainerId: req.user?._id,
+      trainerId: authUserId,
       duration: duration || "weekly",
 
-      // CORE
-      calories: profile.calories,
-      macros: profile.macros,
+      calories: safeCalories,
+      macros: safeMacros,
 
-      //  AQUÍ ESTÁ EL FIX IMPORTANTE
-      meta: profile.meta,
+      meta: safeMeta,
 
-      // CONTEXTO EXTRA (opcional)
+      medicalFlags: Array.isArray(bodyMedicalFlags)
+        ? bodyMedicalFlags
+        : user.medicalFlags || [],
+
+      activityLevel:
+        bodyActivityLevel || user.activityLevel || safeMeta.activityLevel || "light",
+
       context: generated?.context || {},
 
-      meals: [],
+      meals: Array.isArray(meals) ? meals : [],
     });
 
     const savedPlan = await newPlan.save();
 
-    return res.status(201).json({
-      message: "Nutrition plan created successfully",
-      plan: savedPlan,
-    });
+    return res.status(201).json(savedPlan);
   } catch (error) {
     console.error("Error creating nutrition plan:", error);
-    res.status(500).json({ error: "Server error" });
+
+    return res.status(500).json({
+      message: "Unable to create nutrition plan",
+      error: error.message,
+    });
   }
-  console.log("PROFILE META:", profile.meta);
 };
+
 // =============================
 // GET PLAN BY USER
 // =============================
@@ -122,17 +201,73 @@ exports.getPlanByUser = async (req, res) => {
   try {
     const { userId } = req.params;
 
+    if (!userId) {
+      return res.status(400).json({
+        message: "userId is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        message: "Invalid userId.",
+      });
+    }
+
+    // =============================
+    // FETCH USER FOR ACCESS CONTROL
+    // =============================
+    const user = await User.findById(userId).select("trainerId role");
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found.",
+      });
+    }
+
+    const authRole = req.user?.role;
+    const authUserId = req.user?._id || req.user?.id;
+
+    const isAdmin = authRole === "admin";
+    const isTrainer = authRole === "personal-trainer";
+    const isClient = authRole === "basic";
+
+    if (!isAdmin && !isTrainer && !isClient) {
+      return res.status(403).json({
+        message: "Access denied.",
+      });
+    }
+
+    if (isTrainer) {
+      const trainerOwnsClient =
+        user.trainerId && String(user.trainerId) === String(authUserId);
+
+      if (!trainerOwnsClient) {
+        return res.status(403).json({
+          message: "Access denied to this client.",
+        });
+      }
+    }
+
+    if (isClient && String(authUserId) !== String(userId)) {
+      return res.status(403).json({
+        message: "Access denied.",
+      });
+    }
+
     const plans = await NutritionPlan.find({ userId }).sort({
       createdAt: -1,
     });
 
-    res.status(200).json(plans);
+    return res.status(200).json(plans);
   } catch (error) {
-    console.error("Error fetching plans:", error);
-    res.status(500).json({ error: "Server error" });
+    console.error("Error fetching nutrition plans:", error);
+
+    return res.status(500).json({
+      message: "Unable to fetch nutrition plans",
+      error: error.message,
+    });
   }
 };
-
 // =============================
 // UPDATE PLAN
 // =============================
