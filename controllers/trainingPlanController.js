@@ -2,7 +2,7 @@
 const mongoose = require("mongoose");
 const TrainingPlan = require("../models/trainingPlanModel");
 const User = require("../models/userModel");
-const { buildHealthPlan } = require("../services/healthEngine");
+const { buildNutritionProfile } = require("../services/nutritionEngine");
 const User = require("../models/userModel");
 
 const isObjectId = (v) => mongoose.Types.ObjectId.isValid(String(v || ""));

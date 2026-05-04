@@ -1,6 +1,6 @@
 const NutritionPlan = require("../models/NutritionPlan");
 const User = require("../models/userModel");
-const { buildNutritionProfile } = require("../nutritionEngine/profile");
+const { buildNutritionProfile } = require("../services/nutritionEngine");
 const mongoose = require("mongoose");
 const { generatePlanLogic } = require("../services/generatePlanLogic");
 
