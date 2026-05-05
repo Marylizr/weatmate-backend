@@ -43,13 +43,13 @@ eventRouter.post(
 -------------------------- */
 
 // Get events assigned to logged user + unreadCount
+
 eventRouter.get(
   "/user",
   authMiddleware,
-  allowRoles("admin", "personal-trainer", "basic"),
+  allowRoles("admin", "personal-trainer", "client", "basic"),
   eventController.getUserEvents,
 );
-
 /* -------------------------
    Invite responses (User)
 -------------------------- */
@@ -58,7 +58,7 @@ eventRouter.get(
 eventRouter.post(
   "/:id/confirm",
   authMiddleware,
-  allowRoles("admin", "personal-trainer", "basic"),
+  allowRoles("admin", "personal-trainer", "client", "basic"),
   eventController.confirmEvent,
 );
 
@@ -66,7 +66,7 @@ eventRouter.post(
 eventRouter.post(
   "/:id/decline",
   authMiddleware,
-  allowRoles("admin", "personal-trainer", "basic"),
+  allowRoles("admin", "personal-trainer", "client", "basic"),
   eventController.declineEvent,
 );
 
@@ -78,7 +78,7 @@ eventRouter.post(
 eventRouter.post(
   "/:id/reschedule-request",
   authMiddleware,
-  allowRoles("admin", "personal-trainer", "basic"),
+  allowRoles("admin", "personal-trainer", "client", "basic"),
   eventController.requestReschedule,
 );
 

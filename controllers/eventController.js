@@ -67,17 +67,54 @@ const computeInviteStateForUser = (event, userId) => {
 
 exports.findAll = async (req, res) => {
   try {
+    const authId = req.user?.id || req.user?._id;
+    const role = req.user?.role;
+
+    if (!authId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     const query = {};
 
-    // Optional filters
-    if (req.query.userId && isValidObjectId(req.query.userId)) {
-      query.userId = toObjectId(req.query.userId);
-    }
-    if (req.query.trainerId && isValidObjectId(req.query.trainerId)) {
-      query.trainerId = toObjectId(req.query.trainerId);
+    /*
+      Role-based visibility:
+      - admin: can see all events, optionally filtered by query params
+      - personal-trainer: can see only events created by that trainer
+      - client/basic: can see only assigned non-trainerOnly events
+    */
+
+    if (role === "personal-trainer") {
+      query.trainerId = toObjectId(authId);
+
+      if (req.query.userId && isValidObjectId(req.query.userId)) {
+        query.userId = toObjectId(req.query.userId);
+      }
     }
 
-    // Optional: status filter
+    if (role === "client" || role === "basic") {
+      query.userId = toObjectId(authId);
+      query.trainerOnly = false;
+    }
+
+    if (role === "admin") {
+      if (req.query.userId && isValidObjectId(req.query.userId)) {
+        query.userId = toObjectId(req.query.userId);
+      }
+
+      if (req.query.trainerId && isValidObjectId(req.query.trainerId)) {
+        query.trainerId = toObjectId(req.query.trainerId);
+      }
+    }
+
+    /*
+      Extra filters supported by frontend:
+      /events?status=pending
+      /events?trainerOnly=true
+      /events?trainerOnly=false
+      /events?from=2026-05-01
+      /events?to=2026-05-31
+    */
+
     if (
       req.query.status &&
       ["pending", "completed", "canceled"].includes(req.query.status)
@@ -85,13 +122,44 @@ exports.findAll = async (req, res) => {
       query.status = req.query.status;
     }
 
+    if (req.query.trainerOnly === "true") {
+      query.trainerOnly = true;
+    }
+
+    if (req.query.trainerOnly === "false") {
+      query.trainerOnly = false;
+    }
+
+    if (req.query.from || req.query.to) {
+      query.date = {};
+
+      if (req.query.from) {
+        const fromDate = safeDate(req.query.from);
+        if (!fromDate) {
+          return res.status(400).json({ message: "Invalid from date." });
+        }
+
+        query.date.$gte = fromDate;
+      }
+
+      if (req.query.to) {
+        const toDate = safeDate(req.query.to);
+        if (!toDate) {
+          return res.status(400).json({ message: "Invalid to date." });
+        }
+
+        query.date.$lte = toDate;
+      }
+    }
+
     const events = await basePopulate(Event.find(query).sort({ date: 1 }));
 
     res.status(200).json(events);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Unable to retrieve events", error: error.message });
+    res.status(500).json({
+      message: "Unable to retrieve events",
+      error: error.message,
+    });
   }
 };
 
@@ -554,9 +622,14 @@ exports.acceptReschedule = async (req, res) => {
       : [];
     event.rescheduleHistory.push({
       previousDate: event.date,
-      rescheduledAt: new Date(),
+      newDate: parsed,
+      requestedBy: null,
+      respondedBy: toObjectId(authId),
+      note: "",
+      decision: "accepted",
+      requestedAt: new Date(),
+      respondedAt: new Date(),
     });
-
     // Apply new date
     event.date = proposed;
 
